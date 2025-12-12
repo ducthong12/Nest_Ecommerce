@@ -1,165 +1,78 @@
 version: '3.8'
 
 services:
-  # ==========================================
-  # APP 1: AUTH SERVICE
-  # ==========================================
-  api-gateway-service:
-    build: .
-    container_name: nest_api_gateway_service
-    command: ['node', 'dist/apps/api-gateway-service/main'] # Chạy file main của app 1
+  # 1. API Gateway
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: api-gateway
+    container_name: api-gateway
     ports:
-      - '3001:3001' # Map ra cổng 3001
+      - '3000:3000'
     environment:
-      - PORT=3001
-      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
-      # Kết nối Kafka dùng địa chỉ nội bộ container
-      - KAFKA_BROKERS=kafka-1:29092,kafka-2:29093,kafka-3:29094
+      - DATABASE_URL=postgresql://postgres:12345678@localhost:5435/user_service_app_edu?schema=public
+      - API_GATEWAY_PORT=3000
     depends_on:
       - postgres
-      - kafka-1
-      - kafka-2
-      - kafka-3
+    networks:
+      - app-network
 
-  analytics-service:
-    build: .
-    container_name: nest_analytics_service
-    command: ['node', 'dist/apps/analytics/main'] # Chạy file main của app 1
+  # 2. Analytics Service
+  analytics:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: analytics
+    container_name: analytics
     ports:
-      - '3002:3002' # Map ra cổng 3002
+      - '3002:3002'
     environment:
-      - PORT=3002
-      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
-      # Kết nối Kafka dùng địa chỉ nội bộ container
-      - KAFKA_BROKERS=kafka-1:29092,kafka-2:29093,kafka-3:29094
+      - DATABASE_URL=postgresql://postgres:12345678@localhost:5435/user_service_app_edu?schema=public
+      - ANALYTICS_SERVICE_PORT=3002
     depends_on:
       - postgres
-      - kafka-1
-      - kafka-2
-      - kafka-3
+    networks:
+      - app-network
 
-  # Dịch vụ Postgres (như file của bạn)
+  # 3. Storage Service
+  storage:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: storage
+    container_name: storage
+    ports:
+      - '3003:3003'
+    environment:
+      - DATABASE_URL=postgresql://postgres:12345678@localhost:5435/user_service_app_edu?schema=public
+      - PORT=3003
+    depends_on:
+      - postgres
+    networks:
+      - app-network
+
+  # Database (Ví dụ dùng Postgres)
   postgres:
-    image: postgres:latest
-    container_name: my_postgres
+    image: postgres:15-alpine
+    container_name: postgres
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mydb
     ports:
-      - '${POSTGRES_PORT}:5432' # Ánh xạ cổng 5431 (từ file .env) ra máy thật
+      - '5435:5435'
     volumes:
-      - postgres-data:/var/lib/postgresql
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
 
-  # rabbitmq:
-  #   image: rabbitmq:3-management
-  #   container_name: rabbitmq_container
-  #   ports:
-  #     - '5672:5672' # Port để ứng dụng (NestJS) kết nối gửi/nhận tin
-  #     - '15672:15672' # Port giao diện quản lý Web (User/Pass: guest/guest)
-  #   environment:
-  #     RABBITMQ_DEFAULT_USER: guest
-  #     RABBITMQ_DEFAULT_PASS: guest
-  #   volumes:
-  #     - rabbitmq_data:/var/lib/rabbitmq
-
-  # 1. Zookeeper: Kafka cần cái này để quản lý trạng thái (phiên bản cũ/ổn định)
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.5.0
-    container_name: zookeeper_container
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    ports:
-      - '2181:2181'
-    volumes:
-      - zookeeper_data:/var/lib/zookeeper/data
-      - zookeeper_log:/var/lib/zookeeper/log
-
-  # 2. Kafka Broker: Trái tim của hệ thống
-  # --- Broker 1 ---
-  kafka-1:
-    image: confluentinc/cp-kafka:7.5.0
-    container_name: kafka-1
-    depends_on:
-      - zookeeper
-    ports:
-      - '9092:9092'
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-1:29092,PLAINTEXT_HOST://localhost:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      # Tối ưu cho High Load
-      KAFKA_NUM_PARTITIONS: 6 # Mặc định 6 phân vùng để chia tải song song
-      KAFKA_DEFAULT_REPLICATION_FACTOR: 3 # Sao lưu ra 3 máy để an toàn dữ liệu
-      KAFKA_MIN_IN_SYNC_REPLICAS: 2 # Ít nhất 2 máy phải nhận được tin mới coi là thành công
-    volumes:
-      - kafka1_data:/var/lib/kafka/data
-
-  # --- Broker 2 ---
-  kafka-2:
-    image: confluentinc/cp-kafka:7.5.0
-    container_name: kafka-2
-    depends_on:
-      - zookeeper
-    ports:
-      - '9093:9093'
-    environment:
-      KAFKA_BROKER_ID: 2
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-2:29093,PLAINTEXT_HOST://localhost:9093
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_NUM_PARTITIONS: 6
-      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
-      KAFKA_MIN_IN_SYNC_REPLICAS: 2
-    volumes:
-      - kafka2_data:/var/lib/kafka/data
-
-  # --- Broker 3 ---
-  kafka-3:
-    image: confluentinc/cp-kafka:7.5.0
-    container_name: kafka-3
-    depends_on:
-      - zookeeper
-    ports:
-      - '9094:9094'
-    environment:
-      KAFKA_BROKER_ID: 3
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-3:29094,PLAINTEXT_HOST://localhost:9094
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_NUM_PARTITIONS: 6
-      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
-      KAFKA_MIN_IN_SYNC_REPLICAS: 2
-    volumes:
-      - kafka3_data:/var/lib/kafka/data
-
-  # ------------------------------------------------------------
-  # KAFKA UI - Quản lý cả cụm
-  # ------------------------------------------------------------
-  kafka-ui:
-    image: provectuslabs/kafka-ui:latest
-    container_name: kafka_ui_container
-    depends_on:
-      - kafka-1
-      - kafka-2
-      - kafka-3
-    ports:
-      - '8080:8080'
-    environment:
-      KAFKA_CLUSTERS_0_NAME: HighLoadCluster
-      # Kết nối tới tất cả các node trong cluster
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka-1:29092,kafka-2:29093,kafka-3:29094
-      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+networks:
+  app-network:
+    driver: bridge
 
 volumes:
-  postgres-data:
-  zookeeper_data:
-  zookeeper_log:
-  kafka1_data:
-  kafka2_data:
-  kafka3_data:
+  postgres_data:

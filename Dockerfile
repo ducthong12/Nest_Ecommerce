@@ -1,39 +1,53 @@
-# Dockerfile
+# --- Stage 1: Base & Dependencies ---
+FROM node:20-alpine AS base
 
-# --- Stage 1: Builder ---
-FROM node:18-alpine AS builder
+# Cài đặt libc6-compat nếu cần thiết cho Prisma trên Alpine
+RUN apk add --no-cache libc6-compat
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
-# Copy file package để cài dependency trước (tận dụng cache layer)
+# Copy package files để cài đặt dependencies trước (tận dụng Docker cache)
 COPY package*.json ./
-COPY prisma ./prisma/ 
+COPY prisma ./prisma/
 
 # Cài đặt dependencies
 RUN npm ci
 
-# Copy toàn bộ source code
-COPY . .
-
-# Generate Prisma Client (Rất quan trọng vì bạn dùng Prisma)
+# Generate Prisma Client (Rất quan trọng để Prisma hoạt động)
 RUN npx prisma generate
 
-# Build toàn bộ project (tạo ra dist/apps/app1, dist/apps/app2...)
-RUN npm run build
+# --- Stage 2: Build ---
+FROM base AS builder
 
-# --- Stage 2: Runner ---
-FROM node:18-alpine AS runner
+WORKDIR /app
 
-WORKDIR /usr/src/app
+# Copy toàn bộ source code (bao gồm apps, common, prisma, libs...)
+COPY . .
 
-# Copy dependency từ builder
-COPY --from=builder /usr/src/app/node_modules ./node_modules
-COPY --from=builder /usr/src/app/package*.json ./
-COPY --from=builder /usr/src/app/dist ./dist
-COPY --from=builder /usr/src/app/prisma ./prisma
+# Copy node_modules từ stage trước
+COPY --from=base /app/node_modules ./node_modules
 
-# Thiết lập biến môi trường cơ bản
-ENV NODE_ENV=production
+# Nhận tên App cần build từ Docker Compose
+ARG APP_NAME
+RUN npm run build ${APP_NAME}
 
-# Lệnh CMD sẽ được ghi đè trong docker-compose
-CMD ["node", "dist/apps/app-1/main"]
+# --- Stage 3: Production Runner ---
+FROM node:20-alpine AS runner
+
+WORKDIR /app
+
+# Thiết lập biến môi trường
+ENV NODE_ENV production
+
+# Copy node_modules (chứa cả Prisma client đã generate)
+COPY --from=base /app/node_modules ./node_modules
+COPY --from=base /app/package*.json ./
+
+# Nhận tên App để copy đúng thư mục dist
+ARG APP_NAME
+
+# Copy folder dist của app tương ứng từ builder
+COPY --from=builder /app/dist/apps/${APP_NAME} ./dist
+
+# Command để chạy app
+CMD ["node", "dist/main"]
