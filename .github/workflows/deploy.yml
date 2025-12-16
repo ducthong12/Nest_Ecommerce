@@ -55,14 +55,14 @@ jobs:
           # 1. Tạo file .env động
           # DOCKER_USERNAME cần thiết để file compose biết tải ảnh từ đâu
           echo "DOCKER_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}" > .env
-          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env
-          echo "AWS_BUCKET_ACCESS_KEY=${{ secrets.AWS_BUCKET_ACCESS_KEY }}" >> .env
-          echo "AWS_BUCKET_NAME=${{ secrets.AWS_BUCKET_NAME }}" >> .env
+          echo "DATABASE_URL=\"${{ secrets.DATABASE_URL }}\"" >> .env
+          echo "AWS_BUCKET_ACCESS_KEY=\"${{ secrets.AWS_BUCKET_ACCESS_KEY }}\"" >> .env
+          echo "AWS_BUCKET_NAME=\"${{ secrets.AWS_BUCKET_NAME }}\"" >> .env
           echo "AWS_BUCKET_SECRET_KEY=\"${{ secrets.AWS_BUCKET_SECRET_KEY }}\"" >> .env
-          echo "AWS_CLOUDFRONT_KEY_PAIR_ID=${{ secrets.AWS_CLOUDFRONT_KEY_PAIR_ID }}" >> .env
-          echo "AWS_CLOUDFRONT_PRIVATE_KEY=${{ secrets.AWS_CLOUDFRONT_PRIVATE_KEY }}" >> .env
-          echo "AWS_CLOUDFRONT_S3_DOMAIN=${{ secrets.AWS_CLOUDFRONT_S3_DOMAIN }}" >> .env
-          echo "AWS_REGION_ID=${{ secrets.AWS_REGION_ID }}" >> .env
+          echo "AWS_CLOUDFRONT_KEY_PAIR_ID=\"${{ secrets.AWS_CLOUDFRONT_KEY_PAIR_ID }}\"" >> .env
+          echo "AWS_CLOUDFRONT_PRIVATE_KEY=\"${{ secrets.AWS_CLOUDFRONT_PRIVATE_KEY }}\"" >> .env
+          echo "AWS_CLOUDFRONT_S3_DOMAIN=\"${{ secrets.AWS_CLOUDFRONT_S3_DOMAIN }}\"" >> .env
+          echo "AWS_REGION_ID=\"${{ secrets.AWS_REGION_ID }}\"" >> .env
 
           # 2. Pull images (Tải cả 3 ảnh api-gateway, analytics, storage về)
           # Vì trong docker-compose.yml bạn đã khai báo 3 service này
