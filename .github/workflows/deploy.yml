@@ -1,15 +1,20 @@
-name: CI/CD
+name: CI/CD Hybrid 3 Apps
 
 on:
   push:
     branches: ['main']
 
 jobs:
-  # JOB 1: BUILD & PUSH (Vẫn nên chạy trên Cloud để tiết kiệm CPU cho Server thật)
+  # JOB 1: BUILD & PUSH (Chạy trên Cloud Ubuntu của GitHub)
   build-and-push:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Danh sách 3 app cần build (tên này phải trùng với tên folder trong source code)
+        service: [api-gateway, analytics, storage]
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Login Docker Hub
@@ -18,35 +23,48 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Build và Push từng service theo danh sách matrix ở trên
+      - name: Build and push ${{ matrix.service }}
         uses: docker/build-push-action@v5
         with:
-          context: .
-          file: ./Dockerfile
+          context: . # Quan trọng: Context là root để thấy file chung
+          file: ./Dockerfile # Dùng Dockerfile chung
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/my-app:latest # (Giả sử build chung hoặc dùng matrix như cũ)
-          # ... (Phần matrix build giữ nguyên như cũ của bạn)
+          # Đặt tên ảnh theo format: username/tên-service:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest
+          # Truyền biến APP_NAME vào để Dockerfile biết đang build app nào
+          build-args: |
+            APP_NAME=${{ matrix.service }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-  # JOB 2: DEPLOY (Chạy trực tiếp trên EC2 qua Self-hosted Runner)
+  # JOB 2: DEPLOY (Chạy trên máy EC2 của bạn - Self-hosted)
   deploy:
     needs: build-and-push
-    runs-on: self-hosted # <--- KHÁC BIỆT LỚN NHẤT: Chạy trên máy của bạn
+    runs-on: self-hosted # <--- Chạy trực tiếp trên EC2
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        # Runner sẽ tự pull code về thư mục làm việc trên EC2
+        # Bước này sẽ tải file docker-compose.yml mới nhất về máy EC2
 
-      - name: Deploy to Docker
+      - name: Deploy 3 Apps
         run: |
-          # 1. Tạo file .env (Runner đang ở ngay thư mục source code)
+          # 1. Tạo file .env động
+          # DOCKER_USERNAME cần thiết để file compose biết tải ảnh từ đâu
           echo "DOCKER_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}" > .env
           echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env
 
-          # 2. Pull image mới về
+          # 2. Pull images (Tải cả 3 ảnh api-gateway, analytics, storage về)
+          # Vì trong docker-compose.yml bạn đã khai báo 3 service này
           docker compose pull
 
-          # 3. Up lại container
+          # 3. Khởi động lại hệ thống
+          # -d: chạy ngầm
+          # --remove-orphans: xóa các container rác không còn trong file config
           docker compose up -d --remove-orphans
 
-          # 4. Dọn dẹp
+          # 4. Dọn dẹp image cũ để giải phóng ổ cứng
           docker system prune -f
