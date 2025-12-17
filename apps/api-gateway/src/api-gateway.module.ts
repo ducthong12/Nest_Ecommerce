@@ -5,6 +5,7 @@ import { StorageModule } from './storage/storage.module';
 import { APP_GUARD } from '@nestjs/core';
 import { RateLimitGuard } from 'common/guards/rate-limit.guard';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { UserModule } from './user/user.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
         limit: 10,
       },
     ]),
+    UserModule,
   ],
   controllers: [ApiGatewayController],
   providers: [

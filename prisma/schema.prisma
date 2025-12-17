@@ -11,7 +11,7 @@ generator client {
 
 generator docs {
   provider = "node node_modules/prisma-docs-generator"
-  output   = "../src/generated/docs" 
+  output   = "../generated/docs" 
 }
 
 datasource db {
