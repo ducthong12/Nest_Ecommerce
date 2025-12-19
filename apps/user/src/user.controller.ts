@@ -6,8 +6,9 @@ import { GrpcMethod } from '@nestjs/microservices';
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
-  @GrpcMethod('UserService', 'GetUserInfo')
+  @GrpcMethod('USER_SERVICE', 'GetUserInfo')
   getUserInfo(data: { id: number }) {
+    console.log('UserController - getUserInfo - data:', data);
     return this.userService.getInfo(data.id);
   }
 }

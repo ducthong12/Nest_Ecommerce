@@ -14,7 +14,7 @@ async function bootstrap() {
       transport: Transport.GRPC,
       options: {
         package: NAME_SERVICE_GRPC.INVENTORY_PACKAGE,
-        protoPath: join(__dirname, '/common/inventory.proto'), // Đường dẫn đến file proto
+        protoPath: join(__dirname, '/inventory.proto'), // Đường dẫn đến file proto
         url: `0.0.0.0:${PORT_GRPC.INVENTORY_PORT_GRPC}`,
       },
     },

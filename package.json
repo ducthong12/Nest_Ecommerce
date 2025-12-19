@@ -25,7 +25,8 @@
     "start:order": "nest start order --watch",
     "start:inventory": "nest start inventory --watch",
     "start:product": "nest start product --watch",
-    "start:all": "concurrently \"npm run start:apigateway\" \"npm run start:storage\" \"npm run start:analytics\" \"npm run start:user\" \"npm run start:inventory\" \"npm run start:product\"",
+    "start:nodeA": "concurrently \"npm run start:apigateway\"",
+    "start:nodeB": "concurrently \"npm run start:storage\" \"npm run start:analytics\" \"npm run start:user\" \"npm run start:inventory\" \"npm run start:product\"",
     "generate:prisma": "npx prisma generate",
     "generate:prisma-docs": "npx prisma generate docs"
   },

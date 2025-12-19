@@ -11,6 +11,7 @@ export class UserController {
   @ApiResponse({ status: 200, description: 'User info.' })
   @ApiResponse({ status: 404, description: 'User not found.' })
   async getUserInfo(@Param('id') id: number) {
+    console.log('UserController - getUserInfo - id:', id);
     return await this.userService.getUserInfo(id);
   }
 }

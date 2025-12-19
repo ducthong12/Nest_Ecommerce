@@ -5,7 +5,7 @@ package product; // Tên package, dùng để config trong NestJS
 // Import Empty nếu muốn dùng cho hàm Delete trả về rỗng
 // import "google/protobuf/empty.proto"; 
 
-service ProductService {
+service PRODUCT_SERVICE {
   // Lấy 1 sản phẩm theo ID
   rpc FindOne (FindOneRequest) returns (ProductResponse);
 

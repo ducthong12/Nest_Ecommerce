@@ -17,7 +17,7 @@ import {
         options: {
           package: NAME_SERVICE_GRPC.USER_PACKAGE,
           protoPath: join(__dirname, '/user.proto'),
-          url: `0.0.0.0:${PORT_GRPC.USER_PORT_GRPC}`,
+          url: `localhost:${PORT_GRPC.USER_PORT_GRPC}`,
         },
       },
     ]),

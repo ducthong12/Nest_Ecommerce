@@ -3,7 +3,7 @@ syntax = "proto3";
 package user;
 
 // Dịch vụ User
-service UserService {
+service USER_SERVICE {
   rpc GetUserInfo (GetUserInfoRequest) returns (UserResponse);
 }
 

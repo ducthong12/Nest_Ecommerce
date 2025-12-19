@@ -9,7 +9,7 @@ export class UserService {
   private userService: UserGrpcDto;
 
   constructor(
-    @Inject(NAME_SERVICE_GRPC.USER_PACKAGE) private client: ClientGrpc,
+    @Inject(NAME_SERVICE_GRPC.USER_SERVICE) private client: ClientGrpc,
   ) {}
 
   onModuleInit() {
@@ -32,6 +32,7 @@ export class UserService {
       //     `get user info for ID: ${userId}`,
       //     'User Service',
       //   );
+      console.log('Error in getUserInfo:', error);
     }
   }
 }

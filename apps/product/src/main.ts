@@ -25,8 +25,8 @@ async function bootstrap() {
 
 bootstrap()
   .then(() => {
-    console.log('User Service Successfully Started');
+    console.log('Product Service Successfully Started');
   })
   .catch(() => {
-    console.error('User Service Fail Started');
+    console.error('Product Service Fail Started');
   });

@@ -1,6 +1,5 @@
 import { NestFactory } from '@nestjs/core';
 import { UserModule } from './user.module';
-import { ValidationPipe } from '@nestjs/common';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { join } from 'path';
 import {
@@ -16,19 +15,13 @@ async function bootstrap() {
       options: {
         package: NAME_SERVICE_GRPC.USER_PACKAGE,
         protoPath: join(__dirname, '/user.proto'), // Đường dẫn đến file proto
-        url: `0.0.0.0:${PORT_GRPC.USER_PORT_GRPC}`, // Lắng nghe trên port 50051
+        url: `localhost:${PORT_GRPC.USER_PORT_GRPC}`, // Lắng nghe trên port 50051
       },
     },
   );
 
   // Kích hoạt ValidationPipe toàn cục
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true, // Tự động loại bỏ các thuộc tính không có trong DTO
-      forbidNonWhitelisted: true, // Báo lỗi nếu có thuộc tính không mong muốn
-      transform: true, // Tự động chuyển đổi kiểu dữ liệu (ví dụ: string -> number)
-    }),
-  );
+  // app.useGlobalPipes();
 
   await app.listen();
 }

@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package inventory;
 
-service InventoryService {
+service INVENTORY_SERVICE {
   // Lấy thông tin kho của 1 sản phẩm (theo productId)
   rpc GetStock (GetStockRequest) returns (InventoryResponse);
 
