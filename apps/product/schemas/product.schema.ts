@@ -50,6 +50,30 @@ export class Product {
 
   @Prop({ default: 0.0 })
   rating: number;
+
+  @Prop({
+    type: [
+      {
+        k: { type: String, required: true },
+        v: { type: String, required: true },
+        u: { type: String },
+      },
+    ],
+    _id: false, // Không cần tạo _id cho từng item trong mảng để nhẹ DB
+  })
+  specifications: Specification[];
+}
+
+// Định nghĩa cấu trúc của một thông số
+export class Specification {
+  @Prop({ required: true })
+  k: string; // Key: ví dụ "Dung lượng pin", "Chất liệu"
+
+  @Prop({ required: true })
+  v: string; // Value: ví dụ "5000mAh", "Titanium"
+
+  @Prop()
+  u?: string; // Unit (không bắt buộc): ví dụ "mAh", "inch", "GB"
 }
 
 export const ProductSchema = SchemaFactory.createForClass(Product);

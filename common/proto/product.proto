@@ -22,6 +22,7 @@ message CreateProductRequest {
   int32 user_id = 7;    // ID từ Postgres
   string brand = 8;     // ObjectId string
   string category = 9;  // ObjectId string
+  repeated SpecificationItem specifications = 10;
 }
 
 message FindProductRequest {
@@ -53,6 +54,7 @@ message ProductResponse {
   int32 view_count = 11;
   int32 likes_count = 12;
   string created_at = 13;
+  repeated SpecificationItem specifications = 14;
 }
 
 message ProductListResponse {
@@ -82,4 +84,10 @@ message CategoryResponse {
 message BrandResponse {
   string name = 1;
   optional string description = 2;
+}
+
+message SpecificationItem {
+  string k = 1; // Key
+  string v = 2; // Value
+  optional string u = 3; // Unit (Optional vì có dấu ?)
 }

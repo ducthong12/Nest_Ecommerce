@@ -1,4 +1,5 @@
 import {
+  IsArray,
   IsBoolean,
   IsMongoId,
   IsNotEmpty,
@@ -48,4 +49,8 @@ export class CreateProductDto {
   @IsMongoId({ message: 'Category ID không hợp lệ' })
   @IsNotEmpty()
   category: string;
+
+  @IsArray()
+  @IsOptional()
+  specifications?: { k: string; v: string; u?: string }[];
 }
