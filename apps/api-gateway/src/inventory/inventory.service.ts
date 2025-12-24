@@ -4,7 +4,7 @@ import { ClientGrpc } from '@nestjs/microservices';
 import { InventoryGrpcDto } from 'common/dto/grpc/inventory-grpc.dto';
 import { catchError, firstValueFrom, throwError, timeout } from 'rxjs';
 import { MicroserviceErrorHandler } from '../common/microservice-error.handler';
-import { RestockProductDto } from 'common/dto/restock/restock-product.dto';
+import { RestockProductDto } from 'common/dto/inventory/restock-product.dto';
 
 @Injectable()
 export class InventoryService {

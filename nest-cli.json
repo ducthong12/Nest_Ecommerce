@@ -33,6 +33,11 @@
             "include": "../../../common/proto/inventory.proto",
             "outDir": "./dist/apps/api-gateway/inventory.proto",
             "watchAssets": true
+          },
+          {
+            "include": "../../../common/proto/order.proto",
+            "outDir": "./dist/apps/api-gateway/order.proto",
+            "watchAssets": true
           }
         ]
       }

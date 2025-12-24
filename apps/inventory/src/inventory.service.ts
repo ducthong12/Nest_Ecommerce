@@ -3,7 +3,8 @@ import { RedisService } from '@app/redis/redis.service';
 import { Injectable, Inject, BadRequestException } from '@nestjs/common';
 import { ClientKafka } from '@nestjs/microservices';
 import { PrismaInventoryService } from '../prisma/prismaInventory.service';
-import { RestockProductDto } from 'common/dto/restock/restock-product.dto';
+import { RestockProductDto } from 'common/dto/inventory/restock-product.dto';
+import { ReverseProductDto } from 'common/dto/inventory/reverse-product.dto';
 
 @Injectable()
 export class InventoryService {
@@ -44,12 +45,9 @@ export class InventoryService {
    * 2. KHÁCH MUA HÀNG (RESERVE)
    * Yêu cầu: 100 sản phẩm chỉ cho 100 người.
    */
-  async reserveProduct(
-    orderId: number,
-    items: { productId: string; quantity: number }[],
-  ) {
+  async reserveProduct(data: ReverseProductDto) {
     // Duyệt qua từng sản phẩm để trừ kho trên Redis
-    for (const item of items) {
+    for (const item of data.items) {
       // BƯỚC QUAN TRỌNG: Gọi Lua Script
       const isSuccess = await this.redisService.reserveStockAtomic(
         item.productId,
