@@ -1,0 +1,93 @@
+syntax = "proto3";
+
+package product;
+
+import "google/protobuf/empty.proto";
+
+service ProductService {
+  rpc CreateProduct (CreateProductRequest) returns (ProductResponse);
+  rpc FindAllProducts (FindProductRequest) returns (ProductListResponse);
+  rpc FindOneProduct (FindOneRequest) returns (ProductResponse);
+  rpc CreateCategory (CreateCategoryRequest) returns (CategoryResponse);
+  rpc CreateBrand (CreateBrandRequest) returns (BrandResponse);
+}
+
+message CreateProductRequest {
+  string name = 1;
+  string description = 2;
+  double price = 3;     // float/number
+  string sku = 4;
+  optional string image_url = 5;
+  optional bool is_active = 6;
+  int32 user_id = 7;    // ID từ Postgres
+  string brand = 8;     // ObjectId string
+  string category = 9;  // ObjectId string
+  repeated SpecificationItem specifications = 10;
+}
+
+message FindProductRequest {
+  optional string search = 1;
+  optional int32 page = 2;
+  optional int32 limit = 3;
+  optional string sort = 4;
+  optional string category_id = 5;
+}
+
+message FindOneRequest {
+  string id = 1;
+}
+
+message ProductResponse {
+  string id = 1;        // Map từ _id của Mongo
+  string name = 2;
+  string description = 3;
+  double price = 4;
+  string sku = 5;
+  string image_url = 6;
+  bool is_active = 7;
+  int32 user_id = 8;
+  
+  // Quan hệ (Populate) trả về Object hoặc String tùy logic
+  string brand_name = 9;   
+  string category_name = 10;
+  
+  int32 view_count = 11;
+  int32 likes_count = 12;
+  string created_at = 13;
+  repeated SpecificationItem specifications = 14;
+}
+
+message ProductListResponse {
+  repeated ProductResponse products = 1; // Mảng sản phẩm
+  Meta meta = 2; // Phân trang
+}
+
+message Meta {
+  int32 total = 1;
+  int32 page = 2;
+  int32 last_page = 3;
+}
+
+message CreateCategoryRequest {
+  string name = 1;
+}
+
+message CreateBrandRequest {
+  string name = 1;
+  optional string description = 2;
+}
+
+message CategoryResponse {
+  string name = 1;
+}
+
+message BrandResponse {
+  string name = 1;
+  optional string description = 2;
+}
+
+message SpecificationItem {
+  string k = 1; // Key
+  string v = 2; // Value
+  optional string u = 3; // Unit (Optional vì có dấu ?)
+}

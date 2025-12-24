@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package user;
+
+// Dịch vụ User
+service UserService {
+  rpc getUserInfo (GetUserInfoRequest) returns (UserResponse);
+  rpc login (LoginUserRequest) returns (UserResponse);
+  rpc register (CreateUserRequest) returns (UserResponse);
+  rpc getAllUsers (Empty) returns (UserListResponse);
+}
+
+message Empty {}
+
+message GetUserInfoRequest {
+  int32 id = 1; 
+}
+
+message LoginUserRequest {
+  string username = 1; 
+  string password = 2;
+}
+
+message CreateUserRequest {
+  string username = 1;
+  string email = 2;
+  string password = 3;
+  
+  // Dùng từ khóa 'optional' để map với dấu '?' trong TS (name?: string)
+  optional string name = 4;
+  optional string avatar = 5; 
+}
+
+message UserResponse {
+  int32 id = 1; 
+  string username = 2;
+  string email = 3;
+
+  // Dùng optional để hỗ trợ null (trong JS sẽ là string | undefined)
+  optional string name = 5;   
+  optional string avatar = 6; 
+
+  bool is_active = 7;
+
+  // Date thường được chuyển thành ISO String (VD: "2025-12-17T08:30:00Z")
+  string created_at = 8;
+  string updated_at = 9;
+}
+
+// Message chứa danh sách user
+message UserListResponse {
+  // Từ khóa 'repeated' báo hiệu đây là một mảng (list)
+  repeated UserResponse users = 1;
+}

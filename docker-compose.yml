@@ -13,51 +13,79 @@ services:
     restart: always
     # QUAN TRỌNG: Chỉ bind vào 127.0.0.1 để không lộ ra internet, chỉ Nginx Host mới gọi được
     ports:
-      - '127.0.0.1:3000:3000'
-    environment:
-      - API_GATEWAY_PORT=3000
-      - DATABASE_URL=${DATABASE_URL}
+      - '127.0.0.1:${API_GATEWAY_PORT}:${API_GATEWAY_PORT}'
+    env_file:
+      - .env
     networks:
       - app-network
 
-  # 2. Analytics Service
-  analytics:
+  # 2. Inventory Service
+  inventory:
     build:
       context: .
       dockerfile: Dockerfile
       args:
-        APP_NAME: analytics
-    image: ${DOCKER_USERNAME}/analytics:latest
-    container_name: analytics
+        APP_NAME: inventory
+    image: ${DOCKER_USERNAME}/inventory:latest
+    container_name: inventory
     restart: always
     ports:
-      - '127.0.0.1:3002:3002'
-    environment:
-      - ANALYTICS_SERVICE_PORT=3002
-      - DATABASE_URL=${DATABASE_URL}
+      - '127.0.0.1:${INVENTORY_PORT_GRPC}:${INVENTORY_PORT_GRPC}'
+    env_file:
+      - .env
     networks:
       - app-network
 
-  # 3. Storage Service
-  storage:
+  # 3. Order Service
+  order:
     build:
       context: .
       dockerfile: Dockerfile
       args:
-        APP_NAME: storage
-    image: ${DOCKER_USERNAME}/storage:latest
-    container_name: storage
+        APP_NAME: order
+    image: ${DOCKER_USERNAME}/order:latest
+    container_name: order
     restart: always
     ports:
-      - '127.0.0.1:3003:3003'
-    environment:
-      - PORT=3003
-      - DATABASE_URL=${DATABASE_URL}
+      - '127.0.0.1:${ORDER_PORT_GRPC}:${ORDER_PORT_GRPC}'
+    env_file:
+      - .env
     networks:
       - app-network
 
-# Không còn service Nginx ở đây nữa
+  # 4. Product Service
+  product:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: product
+    image: ${DOCKER_USERNAME}/product:latest
+    container_name: product
+    restart: always
+    ports:
+      - '127.0.0.1:${PRODUCT_PORT_GRPC}:${PRODUCT_PORT_GRPC}'
+    env_file:
+      - .env
+    networks:
+      - app-network
 
+  # 5. Product Service
+  user:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: user
+    image: ${DOCKER_USERNAME}/user:latest
+    container_name: user
+    restart: always
+    ports:
+      - '127.0.0.1:${USER_PORT_GRPC}:${USER_PORT_GRPC}'
+    env_file:
+      - .env
+    networks:
+      - app-network
 networks:
   app-network:
     driver: bridge

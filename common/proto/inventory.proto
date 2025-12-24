@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package inventory;
+
+service InventoryService {
+  rpc RestockProduct (RestockProductRequest) returns (InventoryResponse);
+}
+
+// --- ENUMS ---
+
+// Map với enum TransType trong Prisma
+// Proto bắt buộc phần tử đầu tiên phải là số 0
+enum TransactionType {
+  TRANS_UNKNOWN = 0; 
+  TRANS_INBOUND = 1;  // Nhập kho
+  TRANS_OUTBOUND = 2; // Xuất kho
+  TRANS_RESERVE = 3;  // Giữ hàng
+  TRANS_RELEASE = 4;  // Trả hàng giữ
+}
+
+// --- MESSAGES ---
+
+message InventoryResponse {
+  int32 id = 1;
+  string product_id = 2; // ID String từ MongoDB
+  string sku = 3;
+  
+  int32 stock_quantity = 4;    // Tổng tồn kho vật lý
+  int32 reserved_stock = 5;    // Hàng đang bị giữ
+  int32 available_quantity = 6; // Field tính toán (Stock - Reserved) để Frontend dễ hiển thị
+  
+  string last_updated = 7;     // ISO Date String
+}
+
+message RestockProductRequest {
+  string productId = 1;
+  string sku = 2;
+  int32 quantity = 3;
+}
+

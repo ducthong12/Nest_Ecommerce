@@ -17,6 +17,46 @@
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
-    "paths": {}
+    "paths": {
+      "yes/database": [
+        "libs/database/src"
+      ],
+      "yes/database/*": [
+        "libs/database/src/*"
+      ],
+      "yes/mongodb": [
+        "libs/mongodb/src"
+      ],
+      "yes/mongodb/*": [
+        "libs/mongodb/src/*"
+      ],
+      "yes/constants": [
+        "libs/constants/src"
+      ],
+      "yes/constants/*": [
+        "libs/constants/src/*"
+      ],
+      "yes/decorators": [
+        "libs/decorators/src"
+      ],
+      "yes/decorators/*": [
+        "libs/decorators/src/*"
+      ],
+      "@common/constants/*": [
+        "common/constants/*"
+      ],
+      "@common/decorators/*": [
+        "common/decorators/*"
+      ],
+      "@common/guards/*": [
+        "common/guards/*"
+      ],
+      "@app/redis": [
+        "libs/redis/src"
+      ],
+      "@app/redis/*": [
+        "libs/redis/src/*"
+      ]
+    }
   }
 }

@@ -1,0 +1,10 @@
+export const NAME_SERVICE_GRPC = {
+  USER_SERVICE: 'UserService',
+  USER_PACKAGE: 'user',
+  ORDER_SERVICE: 'OrderService',
+  ORDER_PACKAGE: 'order',
+  PRODUCT_SERVICE: 'ProductService',
+  PRODUCT_PACKAGE: 'product',
+  INVENTORY_SERVICE: 'InventoryService',
+  INVENTORY_PACKAGE: 'inventory',
+};

@@ -1,0 +1,53 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+  output        = "../../../node_modules/@generated/inventory-service"
+}
+
+generator docs {
+  provider = "node node_modules/prisma-docs-generator"
+  output        = "../../../node_modules/@generated/docs-inventory-service"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL_INVENTORY")
+}
+
+model Inventory {
+  id             Int      @id @default(autoincrement())
+  productId      String   @unique @map("product_id") // ID String từ MongoDB Product Service
+  sku            String   @unique // Lưu lại SKU để dễ đối soát
+  
+  stockQuantity  Int      @default(0) @map("stock_quantity") // Tổng tồn kho vật lý
+  reservedStock  Int      @default(0) @map("reserved_stock") // Hàng đang được giữ cho đơn chưa thanh toán
+  
+  lastUpdated    DateTime @updatedAt @map("last_updated")
+
+  @@map("inventories")
+}
+
+// Bảng lịch sử nhập/xuất kho (Audit Log - Cực quan trọng cho kho)
+model InventoryTransaction {
+  id          BigInt   @id @default(autoincrement())
+  inventoryId Int      @map("inventory_id")
+  type        TransType
+  quantity    Int
+  reason      String?  // VD: "Order #123", "Restock"
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("inventory_transactions")
+}
+
+enum TransType {
+  INBOUND  // Nhập kho
+  OUTBOUND // Xuất kho/Bán
+  RESERVE  // Giữ hàng
+  RELEASE  // Hủy giữ hàng (trả lại kho)
+}
