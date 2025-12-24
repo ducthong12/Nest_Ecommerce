@@ -1,47 +1,54 @@
-# --- Stage 1: Base (Chỉ cài OS tools) ---
+# --- Stage 1: Base & Dependencies ---
 FROM node:20-alpine AS base
+
+# Cài thư viện hệ thống cần thiết (giữ lại cho stage runner)
 RUN apk add --no-cache libc6-compat openssl
+
 WORKDIR /app
 
-# --- Stage 2: Dependencies (Cài toàn bộ để build) ---
-FROM base AS deps
 COPY package*.json ./
-# Cài cả devDeps để có Nest CLI và các công cụ build
+# Cài đặt toàn bộ dependencies bao gồm cả devDependencies để build
 RUN npm ci
 
-# --- Stage 3: Builder (Generate Prisma & Build code) ---
-FROM deps AS builder
-ARG APP_NAME
+# --- Stage 2: Builder ---
+FROM base AS builder
+
+WORKDIR /app
+# Copy toàn bộ source code
 COPY . .
 
-# 1. Generate Prisma Client (tạo ra các file engine cần thiết)
-RUN if [ -f "apps/${APP_NAME}/prisma/schema.prisma" ]; then \
-      npx prisma generate --schema=apps/${APP_NAME}/prisma/schema.prisma; \
-    fi
-
-# 2. Build App (biên dịch TS sang JS)
-RUN npm run build ${APP_NAME}
-
-# 3. Dọn dẹp node_modules: Chỉ giữ lại production dependencies
-# Bước này cực kỳ quan trọng để giảm dung lượng
-RUN npm prune --production && npm cache clean --force
-
-# --- Stage 4: Production Runner (Image cuối cùng siêu nhẹ) ---
-FROM base AS runner
-WORKDIR /app
-ENV NODE_ENV production
+# Khai báo ARG để biết đang build app nào
 ARG APP_NAME
 
-# Copy node_modules ĐÃ ĐƯỢC TỐI ƯU (chỉ còn lại thư viện chạy)
+# 1. Generate Prisma Client
+# Lệnh này sẽ in ra log nếu thành công, giúp bạn theo dõi
+RUN if [ -f "apps/${APP_NAME}/prisma/schema.prisma" ]; then \
+      echo "🟢 Generating Prisma client for ${APP_NAME}..."; \
+      npx prisma generate --schema=apps/${APP_NAME}/prisma/schema.prisma; \
+    else \
+      echo "🟡 No Prisma schema found for ${APP_NAME}, skipping..."; \
+    fi
+
+# 2. Build App
+RUN npm run build ${APP_NAME}
+
+# --- Stage 3: Production Runner ---
+# Dùng "FROM base" để kế thừa openssl và libc6-compat đã cài ở trên
+FROM base AS runner
+
+WORKDIR /app
+ENV NODE_ENV production
+
+# Phải khai báo lại ARG ở stage này mới sử dụng được
+ARG APP_NAME
+
+# Copy node_modules (chứa Prisma Client đã generate) từ builder
 COPY --from=builder /app/node_modules ./node_modules
 
-# [QUAN TRỌNG] Copy folder Prisma đã generate (nếu bạn dùng output tùy chỉnh)
-# Nếu bạn dùng mặc định trong node_modules thì bước trên đã bao gồm rồi
-# Nếu dùng output ngoài, hãy bỏ comment dòng dưới:
-# COPY --from=builder /app/apps/${APP_NAME}/generated ./apps/${APP_NAME}/generated
-
-# Copy code đã build
+# Copy folder build của app cụ thể vào folder dist của runner
+# Cấu trúc: dist/apps/user/main.js -> dist/main.js
 COPY --from=builder /app/dist/apps/${APP_NAME} ./dist
 
-# Lệnh chạy
+# Chạy file main.js
+# Dùng đường dẫn dist/main.js vì mình đã copy nội dung vào folder dist
 CMD ["node", "dist/main"]
