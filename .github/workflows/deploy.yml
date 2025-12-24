@@ -2,7 +2,7 @@ name: CI/CD Hybrid 3 Apps
 
 on:
   push:
-    branches: ['main']
+    branches: ['production']
 
 jobs:
   # JOB 1: BUILD & PUSH (Chạy trên Cloud Ubuntu của GitHub)
@@ -55,7 +55,11 @@ jobs:
           # 1. Tạo file .env động
           # DOCKER_USERNAME cần thiết để file compose biết tải ảnh từ đâu
           echo "DOCKER_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}" > .env
-          echo "DATABASE_URL=\"${{ secrets.DATABASE_URL }}\"" >> .env
+          echo "DATABASE_URL_USER=\"${{ secrets.DATABASE_URL_USER }}\"" >> .env
+          echo "DATABASE_URL_INVENTORY=\"${{ secrets.DATABASE_URL_INVENTORY }}\"" >> .env
+          echo "DATABASE_URL_ORDER=\"${{ secrets.DATABASE_URL_ORDER }}\"" >> .env
+          echo "REDIS_HOST=\"${{ secrets.REDIS_HOST }}\"" >> .env
+          echo "MONGO_URI=\"${{ secrets.MONGO_URI }}\"" >> .env
           echo "AWS_BUCKET_ACCESS_KEY=\"${{ secrets.AWS_BUCKET_ACCESS_KEY }}\"" >> .env
           echo "AWS_BUCKET_NAME=\"${{ secrets.AWS_BUCKET_NAME }}\"" >> .env
           echo "AWS_BUCKET_SECRET_KEY=\"${{ secrets.AWS_BUCKET_SECRET_KEY }}\"" >> .env
@@ -63,6 +67,13 @@ jobs:
           echo "AWS_CLOUDFRONT_PRIVATE_KEY=\"${{ secrets.AWS_CLOUDFRONT_PRIVATE_KEY }}\"" >> .env
           echo "AWS_CLOUDFRONT_S3_DOMAIN=\"${{ secrets.AWS_CLOUDFRONT_S3_DOMAIN }}\"" >> .env
           echo "AWS_REGION_ID=\"${{ secrets.AWS_REGION_ID }}\"" >> .env
+          echo "API_GATEWAY_PORT=${{ secrets.API_GATEWAY_PORT }}" >> .env
+          echo "STORAGE_SERVICE_PORT=${{ secrets.STORAGE_SERVICE_PORT }}" >> .env
+          echo "ANALYTICS_SERVICE_PORT=${{ secrets.ANALYTICS_SERVICE_PORT }}" >> .env
+          echo "USER_PORT_GRPC=${{ secrets.USER_PORT_GRPC }}" >> .env
+          echo "PRODUCT_PORT_GRPC=${{ secrets.PRODUCT_PORT_GRPC }}" >> .env
+          echo "ORDER_PORT_GRPC=${{ secrets.ORDER_PORT_GRPC }}" >> .env
+          echo "INVENTORY_PORT_GRPC=${{ secrets.INVENTORY_PORT_GRPC }}" >> .env
 
           # 2. Pull images (Tải cả 3 ảnh api-gateway, analytics, storage về)
           # Vì trong docker-compose.yml bạn đã khai báo 3 service này

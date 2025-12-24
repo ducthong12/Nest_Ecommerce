@@ -2,4 +2,12 @@ syntax = "proto3";
 
 package order;
 
-service ORDER_SERVICE {}
+service OrderService {
+    rpc GetHello (Empty) returns (GetHelloResponse);
+}
+
+message Empty {}
+
+message GetHelloResponse {
+    string message = 1;
+}
