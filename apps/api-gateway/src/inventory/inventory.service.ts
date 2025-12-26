@@ -4,7 +4,8 @@ import { ClientGrpc } from '@nestjs/microservices';
 import { InventoryGrpcDto } from 'common/dto/grpc/inventory-grpc.dto';
 import { catchError, firstValueFrom, throwError, timeout } from 'rxjs';
 import { MicroserviceErrorHandler } from '../common/microservice-error.handler';
-import { RestockProductDto } from 'common/dto/inventory/restock-product.dto';
+import { ReserveStockDto } from 'common/dto/inventory/reverse-stock.dto';
+import { RestockStockDto } from 'common/dto/inventory/restock-stock.dto';
 
 @Injectable()
 export class InventoryService {
@@ -20,10 +21,10 @@ export class InventoryService {
     );
   }
 
-  async restockProduct(restockProductDto: RestockProductDto) {
+  async reserveStock(data: ReserveStockDto) {
     try {
       return await firstValueFrom(
-        this.inventoryService.restockProduct(restockProductDto).pipe(
+        this.inventoryService.reserveStock(data).pipe(
           timeout(10000),
           catchError((error) => throwError(() => error)),
         ),
@@ -31,7 +32,24 @@ export class InventoryService {
     } catch (error) {
       MicroserviceErrorHandler.handleError(
         error,
-        `restock product: ${JSON.stringify(restockProductDto)}`,
+        `reserve stock: ${JSON.stringify(data)}`,
+        'Inventory Service',
+      );
+    }
+  }
+
+  async restockStock(data: RestockStockDto) {
+    try {
+      return await firstValueFrom(
+        this.inventoryService.restockStock(data).pipe(
+          timeout(10000),
+          catchError((error) => throwError(() => error)),
+        ),
+      );
+    } catch (error) {
+      MicroserviceErrorHandler.handleError(
+        error,
+        `restock stock: ${JSON.stringify(data)}`,
         'Inventory Service',
       );
     }

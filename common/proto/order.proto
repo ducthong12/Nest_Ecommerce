@@ -3,11 +3,21 @@ syntax = "proto3";
 package order;
 
 service OrderService {
-    rpc GetHello (Empty) returns (GetHelloResponse);
+  rpc CreateOrder (CreateOrderRequest) returns (CreateOrderResponse);
 }
 
 message Empty {}
 
-message GetHelloResponse {
+message Item {
+  string product_id = 1;
+  int32 quantity = 2;
+}
+
+message CreateOrderRequest {
+  string order_id = 1;
+  repeated Item items = 2;
+}
+
+message CreateOrderResponse {
     string message = 1;
 }

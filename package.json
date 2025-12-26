@@ -27,7 +27,7 @@
     "start:product": "nest start product --watch",
     "start:nodeA": "concurrently \"npm run start:apigateway --watch\"",
     "start:nodeB": "concurrently \"npm run start:storage --watch\" \"npm run start:analytics --watch\" \"npm run start:user --watch\" \"npm run start:inventory --watch\" \"npm run start:product --watch\"",
-    "generate:prisma": "concurrently \"npx prisma generate --schema=apps/user/prisma/schema.prisma --name init\" \"npx prisma generate --schema=apps/order/prisma/schema.prisma --name init\" \"npx prisma generate --schema=apps/inventory/prisma/schema.prisma --name init\"",
+    "generate:prisma": "concurrently \"npx prisma generate --schema=apps/user/prisma/schema.prisma\" \"npx prisma generate --schema=apps/order/prisma/schema.prisma\" \"npx prisma generate --schema=apps/inventory/prisma/schema.prisma\"",
     "generate:prisma-docs": "concurrently \"npx prisma generate docs --schema=apps/user/prisma/schema.prisma\" \"npx prisma generate docs --schema=apps/order/prisma/schema.prisma\" \"npx prisma generate docs --schema=apps/inventory/prisma/schema.prisma\""
   },
   "dependencies": {

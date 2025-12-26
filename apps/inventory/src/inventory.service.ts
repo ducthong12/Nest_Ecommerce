@@ -3,8 +3,9 @@ import { RedisService } from '@app/redis/redis.service';
 import { Injectable, Inject, BadRequestException } from '@nestjs/common';
 import { ClientKafka } from '@nestjs/microservices';
 import { PrismaInventoryService } from '../prisma/prismaInventory.service';
-import { RestockProductDto } from 'common/dto/inventory/restock-product.dto';
-import { ReverseProductDto } from 'common/dto/inventory/reverse-product.dto';
+import { RestockStockDto } from 'common/dto/inventory/restock-stock.dto';
+import { ReserveStockDto } from 'common/dto/inventory/reverse-stock.dto';
+import { ReleaseStockDto } from 'common/dto/inventory/release-stock.dto';
 
 @Injectable()
 export class InventoryService {
@@ -14,13 +15,8 @@ export class InventoryService {
     // @Inject('INVENTORY_KAFKA_CLIENT') private readonly kafkaClient: ClientKafka, // Inject Kafka Producer
   ) {}
 
-  /**
-   * 1. SHOP NHẬP HÀNG THÊM (RESTOCK)
-   * Yêu cầu: Đang sale thì shop tăng sản phẩm -> Cập nhật ngay.
-   */
-  async restockProduct(data: RestockProductDto) {
-    // B1: Update Database (Postgres) để lưu trữ bền vững
-    // Sử dụng upsert: Nếu chưa có thì tạo mới, có rồi thì cộng thêm
+  async restockStock(data: RestockStockDto) {
+    console.log('Restocking stock:', data);
     const result = await this.prismaInventory.inventory.upsert({
       where: { productId: data.productId },
       update: { stockQuantity: { increment: data.quantity } },
@@ -32,39 +28,41 @@ export class InventoryService {
       },
     });
 
-    // B2: Update Redis (Cache) để phục vụ bán hàng ngay lập tức
-    await this.redisService.addStockAtomic(data.productId, data.quantity);
+    await this.redisService.addStockAtomic({
+      productId: data.productId,
+      quantity: data.quantity,
+    });
 
-    // B3: Bắn Event (Optional - để các service khác như Search cập nhật lại index)
     // this.kafkaClient.emit('inventory.restocked', { productId, quantity });
 
     return result;
   }
 
-  /**
-   * 2. KHÁCH MUA HÀNG (RESERVE)
-   * Yêu cầu: 100 sản phẩm chỉ cho 100 người.
-   */
-  async reserveProduct(data: ReverseProductDto) {
-    // Duyệt qua từng sản phẩm để trừ kho trên Redis
-    for (const item of data.items) {
-      // BƯỚC QUAN TRỌNG: Gọi Lua Script
-      const isSuccess = await this.redisService.reserveStockAtomic(
-        item.productId,
-        item.quantity,
-      );
+  async reserveStock(data: ReserveStockDto) {
+    try {
+      const { success, failedProductIds } =
+        await this.redisService.reserveAtomic(data.items);
 
-      if (!isSuccess) {
-        // Nếu thất bại (Hết hàng) -> Throw lỗi ngay để Controller trả về Client
-        throw new BadRequestException(
-          `Product ${item.productId} is out of stock.`,
-        );
+      if (!success) {
+        return { success: false, failedProductIds };
       }
-    }
 
-    // Nếu tất cả sản phẩm đều trừ Redis thành công:
-    // Bắn message vào Kafka để cập nhật DB sau (Async)
-    // this.kafkaClient.emit('inventory.sold', {
+      // this.kafkaClient.emit('inventory.sold', {
+      //   orderId,
+      //   items,
+      // });
+
+      return { success: true, failedProductIds };
+    } catch (error) {
+      await this.releaseStock({ orderId: data.orderId, items: data.items });
+      return { success: false, failedProductIds: [] };
+    }
+  }
+
+  async releaseStock(data: ReleaseStockDto) {
+    await this.redisService.releaseAtomic(data.items);
+    // this.kafkaClient.emit('inventory.log', {
+    //   type: 'RELEASED',
     //   orderId,
     //   items,
     // });

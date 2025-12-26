@@ -1,6 +1,6 @@
-import { IsArray, IsNotEmpty, IsNumber, IsString, Min } from 'class-validator';
+import { IsArray, IsNotEmpty, IsString } from 'class-validator';
 
-export class ReverseProductDto {
+export class ReleaseStockDto {
   @IsString()
   @IsNotEmpty()
   orderId: string;

@@ -1,70 +1,152 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import Redis from 'ioredis';
+
+export interface ReserveResult {
+  success: boolean;
+  failedProductIds: string[]; // Danh sách ID bị hết hàng
+}
 
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
   private redisClient: Redis;
 
   onModuleInit() {
-    this.redisClient = new Redis({ host: process.env.REDIS_HOST, port: 6379 });
+    this.redisClient = new Redis({
+      host: process.env.REDIS_HOST || 'localhost',
+      port: 6379,
+    });
+
+    this.registerScripts();
   }
 
   onModuleDestroy() {
     this.redisClient.disconnect();
   }
 
-  /**
-   * SỬ DỤNG LUA SCRIPT ĐỂ GIỮ HÀNG
-   * Thao tác này là ATOMIC - 1000 request cùng lúc cũng sẽ xếp hàng xử lý từng cái
-   */
-  async reserveStockAtomic(
-    productId: string,
-    quantity: number,
-  ): Promise<boolean> {
-    const key = `inventory:product:${productId}`;
+  private registerScripts() {
+    this.redisClient.defineCommand('reserveStock', {
+      numberOfKeys: 0,
+      lua: `
+        local failedKeys = {}
+        local failedCount = 0
 
-    const luaScript = `
-      -- KEYS[1]: Key chứa số lượng tồn kho (VD: inventory:product:123)
-      -- ARGV[1]: Số lượng muốn mua (VD: 1)
+        -- BƯỚC 1: KIỂM TRA (CHECK PHASE)
+        for i = 1, #ARGV, 2 do
+          local key = ARGV[i]
+          local qty = tonumber(ARGV[i+1])
+          local currentStock = tonumber(redis.call('GET', key) or 0)
 
-      local currentStock = tonumber(redis.call('GET', KEYS[1]))
+          if currentStock < qty then
+              failedCount = failedCount + 1
+              failedKeys[failedCount] = key -- Lưu key bị lỗi vào mảng
+          end
+        end
 
-      -- Nếu key chưa tồn tại hoặc bằng 0 -> Hết hàng
-      if currentStock == nil or currentStock < tonumber(ARGV[1]) then
-          return -1 -- Mã lỗi: Hết hàng
-      end
+        -- Nếu có bất kỳ món nào lỗi -> Trả về danh sách key lỗi ngay
+        if failedCount > 0 then
+          return failedKeys
+        end
 
-      -- Nếu còn hàng -> Trừ kho ngay lập tức
-      redis.call('DECRBY', KEYS[1], ARGV[1])
+        -- BƯỚC 2: TRỪ KHO (COMMIT PHASE)
+        -- Chỉ chạy khi tất cả đều đủ hàng
+        for i = 1, #ARGV, 2 do
+          local key = ARGV[i]
+          local qty = tonumber(ARGV[i+1])
+          redis.call('DECRBY', key, qty)
+        end
 
-      -- Trả về số lượng còn lại sau khi trừ
-      return redis.call('GET', KEYS[1])
-    `;
+        return nil -- Trả về nil nghĩa là thành công
+      `,
+    });
 
-    // eval(script, số lượng key, tên key, tham số quantity)
-    const result = await this.redisClient.eval(luaScript, 1, key, quantity);
+    this.redisClient.defineCommand('releaseStock', {
+      numberOfKeys: 0,
+      lua: `
+        for i = 1, #ARGV, 2 do
+          local key = ARGV[i]
+          local qty = tonumber(ARGV[i+1])
+          redis.call('INCRBY', key, qty)
+        end
+        return 1
+      `,
+    });
 
-    // Lua trả về -1 là hết hàng
-    if (result === -1) {
-      return false;
+    this.redisClient.defineCommand('addStock', {
+      numberOfKeys: 0,
+      lua: `
+        for i = 1, #ARGV, 2 do
+          local key = ARGV[i]
+          local qty = tonumber(ARGV[i+1])
+          redis.call('INCRBY', key, qty)
+        end
+        return 1
+      `,
+    });
+  }
+
+  async reserveAtomic(
+    items: { productId: string; quantity: number }[],
+  ): Promise<ReserveResult> {
+    if (items.length === 0) return { success: true, failedProductIds: [] };
+
+    const args = [];
+    for (const item of items) {
+      args.push(`inventory:product:${item.productId}`);
+      args.push(item.quantity);
     }
-    return true; // Thành công (Số lượng đã bị trừ trong Redis)
+
+    try {
+      // @ts-ignore
+      const result = await this.redisClient.reserveStock(...args);
+      if (!result) {
+        return { success: true, failedProductIds: [] };
+      }
+
+      const failedKeys = result as string[];
+      const failedIds = failedKeys.map((key) =>
+        key.replace('inventory:product:', ''),
+      );
+
+      return { success: false, failedProductIds: failedIds };
+    } catch (error) {
+      throw new Error('Redis Internal Error');
+    }
   }
 
-  /**
-   * XỬ LÝ SHOP TĂNG SẢN PHẨM (Restock)
-   * Dùng INCRBY để cộng dồn an toàn
-   */
-  async addStockAtomic(productId: string, quantity: number) {
-    const key = `inventory:product:${productId}`;
-    await this.redisClient.incrby(key, quantity);
+  async releaseAtomic(
+    items: { productId: string; quantity: number }[],
+  ): Promise<void> {
+    if (items.length === 0) return;
+
+    const args = [];
+    for (const item of items) {
+      args.push(`inventory:product:${item.productId}`);
+      args.push(item.quantity);
+    }
+
+    try {
+      // @ts-ignore
+      await this.redisClient.releaseStock(...args);
+    } catch (error) {
+      console.error('Redis Release Error:', error);
+    }
   }
 
-  /**
-   * Khởi tạo kho hàng lên Redis (Sync từ DB lên khi khởi động)
-   */
-  async setStock(productId: string, quantity: number) {
-    const key = `inventory:product:${productId}`;
-    await this.redisClient.set(key, quantity);
+  async addStockAtomic(items: {
+    productId: string;
+    quantity: number;
+  }): Promise<void> {
+    if (!items) return;
+
+    const args = [];
+    args.push(`inventory:product:${items.productId}`);
+    args.push(items.quantity);
+
+    try {
+      // @ts-ignore
+      await this.redisClient.addStock(...args);
+    } catch (error) {
+      throw new Error('Redis Add Stock Failed');
+    }
   }
 }
