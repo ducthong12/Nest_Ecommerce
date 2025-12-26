@@ -35,6 +35,8 @@ export class OrderService {
       ),
     );
 
+    const result = this.orderService.createOrder(data);
+
     return {
       message: 'Order created. Please pay within 10 minutes.',
       orderId: order.id,

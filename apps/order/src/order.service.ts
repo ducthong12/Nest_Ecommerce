@@ -1,10 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { PrismaOrderService } from '../prisma/prisma-order.service';
 import { ReserveStockDto } from 'common/dto/inventory/reverse-stock.dto';
+import { ClientKafka } from '@nestjs/microservices';
 
 @Injectable()
 export class OrderService {
-  constructor(private prismaOrder: PrismaOrderService) {}
+  constructor(
+    private prismaOrder: PrismaOrderService,
+    @Inject('ORDER_KAFKA_CLIENT') private readonly kafkaClient: ClientKafka,
+  ) {}
 
   async createOrder(data: ReserveStockDto) {
     const order = await this.prismaOrder.order.create({
@@ -14,13 +18,20 @@ export class OrderService {
         total: 100000, // Giả định tính tiền xong
         items: {
           create: data.items.map((i) => ({
-            productId: i.product_id,
+            productId: i.productId,
             quantity: i.quantity,
             price: 50000,
           })),
         },
       },
       include: { items: true }, // Lấy items để dùng cho job
+    });
+
+    // Gửi tin nhắn Kafka để xử lý việc reserve stock
+    this.kafkaClient.emit('inventory.log', {
+      orderId: order.id,
+      items: data.items,
+      type: 'OUTBOUND',
     });
 
     return order;

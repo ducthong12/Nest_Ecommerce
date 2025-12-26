@@ -53,6 +53,7 @@
     "dotenv": "^17.2.3",
     "helmet": "^8.1.0",
     "ioredis": "^5.8.2",
+    "kafkajs": "^2.2.4",
     "mongoose": "^9.0.2",
     "prisma": "^5.22.0",
     "prisma-docs-generator": "^0.8.0",
