@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
 import { InventoryController } from './inventory.controller';
 import { InventoryService } from './inventory.service';
-import { RedisModule } from '@app/redis';
 import { PrismaInventoryService } from '../prisma/prismaInventory.service';
-import { ConfigModule } from '@nestjs/config';
+import { RedisModule } from '@app/redis';
+import { ClientsModule, Transport } from '@nestjs/microservices';
 
 @Module({
   imports: [RedisModule],

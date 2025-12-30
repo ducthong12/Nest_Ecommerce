@@ -27,13 +27,17 @@ export class OrderService {
       include: { items: true }, // Lấy items để dùng cho job
     });
 
-    // Gửi tin nhắn Kafka để xử lý việc reserve stock
-    this.kafkaClient.emit('inventory.log', {
-      orderId: order.id,
-      items: data.items,
-      type: 'OUTBOUND',
-    });
+    console.log('Order created with ID:', order.id);
 
+    // Gửi tin nhắn Kafka để xử lý việc reserve stock
+    this.kafkaClient.emit(
+      'inventory.log',
+      JSON.stringify({
+        orderId: order.id.toString(),
+        items: data.items,
+        type: 'OUTBOUND',
+      }),
+    );
     return order;
   }
 }

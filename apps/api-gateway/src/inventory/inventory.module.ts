@@ -14,7 +14,7 @@ import { join } from 'path';
         options: {
           package: NAME_SERVICE_GRPC.INVENTORY_PACKAGE,
           protoPath: join(__dirname, '/inventory.proto'),
-          url: `0.0.0.0:50054`,
+          url: `127.0.0.1:50054`,
         },
       },
     ]),

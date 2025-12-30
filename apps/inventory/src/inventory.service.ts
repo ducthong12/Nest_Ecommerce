@@ -1,5 +1,4 @@
 // src/inventory/inventory.service.ts
-import { RedisService } from '@app/redis/redis.service';
 import { Injectable } from '@nestjs/common';
 import { PrismaInventoryService } from '../prisma/prismaInventory.service';
 import { RestockStockDto } from 'common/dto/inventory/restock-stock.dto';
@@ -10,6 +9,7 @@ import {
   FlatInventoryLog,
   InventoryEventDto,
 } from 'common/dto/inventory/inventory-log.dto';
+import { RedisService } from '@app/redis';
 
 @Injectable()
 export class InventoryService {
@@ -22,11 +22,14 @@ export class InventoryService {
   ) {}
 
   onModuleInit() {
-    // Cấu hình: Gom 500 tin nhắn HOẶC Gom trong 500ms (cái nào đến trước thì xử lý)
+    // Use debounceTime to wait for events to stop arriving, then process
+    // OR use bufferCount to trigger on X items, whichever comes first
     this.subscription = this.logSubject
       .pipe(
-        bufferTime(500, 5000), // Max 500ms hoặc max 5000 items (tuỳ chỉnh theo RAM)
-        filter((events) => events.length > 0), // Chỉ chạy khi có data
+        bufferTime(500), // Buffer for 500ms
+        filter((events) => {
+          return events.length > 0; // Only process non-empty buffers
+        }),
       )
       .subscribe(async (batchEvents: InventoryEventDto[]) => {
         await this.processBatch(batchEvents);
@@ -73,11 +76,8 @@ export class InventoryService {
       await tx.inventoryTransaction.createMany({
         data: flatLogs.map((log) => ({
           inventoryId: inventoryIds.get(log.productId)!,
-          productId: log.productId,
-          orderId: BigInt(log.orderId), // Convert String -> BigInt
           type: log.type,
           quantity: log.quantity,
-          createdAt: new Date(),
         })),
       });
     });

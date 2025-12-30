@@ -14,7 +14,7 @@ import { NAME_SERVICE_GRPC } from '@common/constants/port-grpc.constant';
         options: {
           package: NAME_SERVICE_GRPC.USER_PACKAGE,
           protoPath: join(__dirname, '/user.proto'),
-          url: `0.0.0.0:${process.env.USER_PORT_GRPC}`,
+          url: `127.0.0.1:${process.env.USER_PORT_GRPC}`,
         },
       },
     ]),

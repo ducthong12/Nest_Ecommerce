@@ -28,14 +28,14 @@ export class OrderService {
       throw new BadRequestException('Out of stock'); // Hết hàng
     }
 
+    console.log('Stock reserved successfully for order:', data.orderId);
+
     const order = await firstValueFrom(
       this.orderService.createOrder(data).pipe(
         timeout(10000),
         catchError((error) => throwError(() => error)),
       ),
     );
-
-    const result = this.orderService.createOrder(data);
 
     return {
       message: 'Order created. Please pay within 10 minutes.',

@@ -38,6 +38,7 @@ export class InventoryController {
     @Payload() message: InventoryEventDto,
     @Ctx() context: KafkaContext,
   ) {
+    console.log('Received inventory log event:********', message);
     await this.inventoryService.addToBuffer(message);
   }
 }
