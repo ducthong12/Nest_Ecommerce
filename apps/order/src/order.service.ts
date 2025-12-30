@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { PrismaOrderService } from '../prisma/prisma-order.service';
 import { ReserveStockDto } from 'common/dto/inventory/reverse-stock.dto';
 import { ClientKafka } from '@nestjs/microservices';
+import { CancelOrderDto } from 'common/dto/order/cancel-order.dto';
 
 @Injectable()
 export class OrderService {
@@ -11,11 +12,13 @@ export class OrderService {
   ) {}
 
   async createOrder(data: ReserveStockDto) {
+    const amount = 100000;
+
     const order = await this.prismaOrder.order.create({
       data: {
-        userId: 1, // Giả định user cố định
+        userId: 1,
         status: 'PENDING',
-        total: 100000, // Giả định tính tiền xong
+        total: amount,
         items: {
           create: data.items.map((i) => ({
             productId: i.productId,
@@ -27,8 +30,6 @@ export class OrderService {
       include: { items: true }, // Lấy items để dùng cho job
     });
 
-    console.log('Order created with ID:', order.id);
-
     // Gửi tin nhắn Kafka để xử lý việc reserve stock
     this.kafkaClient.emit(
       'inventory.log',
@@ -38,6 +39,43 @@ export class OrderService {
         type: 'OUTBOUND',
       }),
     );
+
+    //Send order data to payment service via Kafka
+    this.kafkaClient.emit(
+      'payment.init',
+      JSON.stringify({
+        orderId: order.id.toString(),
+        amount: amount.toString(),
+      }),
+    );
+
+    return order;
+  }
+
+  async cancelOrder(data: CancelOrderDto) {
+    const order = await this.prismaOrder.order.update({
+      where: { id: data.orderId, status: 'PENDING' },
+      data: { status: 'CANCELED' },
+    });
+
+    const items = (
+      await this.prismaOrder.orderItem.findMany({
+        where: { orderId: data.orderId },
+      })
+    ).map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+    }));
+
+    // Gửi tin nhắn Kafka để xử lý việc reserve stock
+    this.kafkaClient.emit(
+      'inventory.release',
+      JSON.stringify({
+        orderId: order.id.toString(),
+        items: items,
+      }),
+    );
+
     return order;
   }
 }

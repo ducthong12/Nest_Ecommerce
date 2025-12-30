@@ -38,6 +38,11 @@
             "include": "../../../common/proto/order.proto",
             "outDir": "./dist/apps/api-gateway/order.proto",
             "watchAssets": true
+          },
+          {
+            "include": "../../../common/proto/payment.proto",
+            "outDir": "./dist/apps/api-gateway/payment.proto",
+            "watchAssets": true
           }
         ]
       }
@@ -140,6 +145,31 @@
       "sourceRoot": "libs/redis/src",
       "compilerOptions": {
         "tsConfigPath": "libs/redis/tsconfig.lib.json"
+      }
+    },
+    "payment": {
+      "type": "application",
+      "root": "apps/payment",
+      "entryFile": "main",
+      "sourceRoot": "apps/payment/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/payment/tsconfig.app.json",
+        "assets": [
+          {
+            "include": "../../../common/proto/payment.proto",
+            "outDir": "./dist/apps/payment/payment.proto",
+            "watchAssets": true
+          }
+        ]
+      }
+    },
+    "bullmq": {
+      "type": "library",
+      "root": "libs/bullmq",
+      "entryFile": "index",
+      "sourceRoot": "libs/bullmq/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/bullmq/tsconfig.lib.json"
       }
     }
   }

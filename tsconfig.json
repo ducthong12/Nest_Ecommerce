@@ -56,6 +56,12 @@
       ],
       "@app/redis/*": [
         "libs/redis/src/*"
+      ],
+      "@app/bullmq": [
+        "libs/bullmq/src"
+      ],
+      "@app/bullmq/*": [
+        "libs/bullmq/src/*"
       ]
     }
   }

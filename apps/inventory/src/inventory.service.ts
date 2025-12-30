@@ -1,15 +1,23 @@
 // src/inventory/inventory.service.ts
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { PrismaInventoryService } from '../prisma/prismaInventory.service';
 import { RestockStockDto } from 'common/dto/inventory/restock-stock.dto';
 import { ReserveStockDto } from 'common/dto/inventory/reverse-stock.dto';
 import { ReleaseStockDto } from 'common/dto/inventory/release-stock.dto';
-import { bufferTime, filter, Subject, Subscription } from 'rxjs';
+import {
+  bufferTime,
+  filter,
+  Subject,
+  Subscription,
+  merge,
+  bufferCount,
+} from 'rxjs';
 import {
   FlatInventoryLog,
   InventoryEventDto,
 } from 'common/dto/inventory/inventory-log.dto';
 import { RedisService } from '@app/redis';
+import { ClientKafka } from '@nestjs/microservices';
 
 @Injectable()
 export class InventoryService {
@@ -19,14 +27,17 @@ export class InventoryService {
   constructor(
     private readonly redisService: RedisService,
     private readonly prismaInventory: PrismaInventoryService,
+    @Inject('INVENTORY_KAFKA_CLIENT') private readonly kafkaClient: ClientKafka,
   ) {}
 
   onModuleInit() {
     // Use debounceTime to wait for events to stop arriving, then process
     // OR use bufferCount to trigger on X items, whichever comes first
-    this.subscription = this.logSubject
+    this.subscription = merge(
+      this.logSubject.pipe(bufferTime(500)),
+      this.logSubject.pipe(bufferCount(100)),
+    )
       .pipe(
-        bufferTime(500), // Buffer for 500ms
         filter((events) => {
           return events.length > 0; // Only process non-empty buffers
         }),
@@ -145,12 +156,15 @@ export class InventoryService {
 
   async releaseStock(data: ReleaseStockDto) {
     await this.redisService.releaseAtomic(data.items);
-    // this.kafkaClient.emit('inventory.log', {
-    //   type: 'RELEASED',
-    //   orderId,
-    //   items,
-    // });
 
+    this.kafkaClient.emit(
+      'inventory.log',
+      JSON.stringify({
+        type: 'RELEASE',
+        orderId: data.orderId.toString(),
+        items: data.items,
+      }),
+    );
     return { success: true };
   }
 }

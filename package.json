@@ -25,9 +25,10 @@
     "start:order": "nest start order --watch",
     "start:inventory": "nest start inventory --watch",
     "start:product": "nest start product --watch",
+    "start:payment": "nest start payment --watch",
     "start:nodeA": "concurrently \"npm run start:apigateway --watch\"",
-    "start:nodeB": "concurrently \"npm run start:storage\" \"npm run start:analytics\" \"npm run start:user\" \"npm run start:inventory\" \"npm run start:product\" \"npm run start:order\"",
-    "generate:prisma": "concurrently \"npx prisma generate --schema=apps/user/prisma/schema.prisma\" \"npx prisma generate --schema=apps/order/prisma/schema.prisma\" \"npx prisma generate --schema=apps/inventory/prisma/schema.prisma\"",
+    "start:nodeB": "concurrently \"npm run start:user\" \"npm run start:inventory\" \"npm run start:product\" \"npm run start:order\" \"npm run start:payment\"",
+    "generate:prisma": "concurrently \"npx prisma generate --schema=apps/user/prisma/schema.prisma\" \"npx prisma generate --schema=apps/order/prisma/schema.prisma\" \"npx prisma generate --schema=apps/inventory/prisma/schema.prisma\" \"npx prisma generate --schema=apps/payment/prisma/schema.prisma\"",
     "generate:prisma-docs": "concurrently \"npx prisma generate docs --schema=apps/user/prisma/schema.prisma\" \"npx prisma generate docs --schema=apps/order/prisma/schema.prisma\" \"npx prisma generate docs --schema=apps/inventory/prisma/schema.prisma\""
   },
   "dependencies": {
@@ -36,6 +37,7 @@
     "@aws-sdk/s3-request-presigner": "^3.946.0",
     "@grpc/grpc-js": "^1.14.3",
     "@grpc/proto-loader": "^0.8.0",
+    "@nestjs/bullmq": "^11.0.4",
     "@nestjs/common": "^11.1.9",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.9",
@@ -47,6 +49,7 @@
     "@nestjs/throttler": "^6.5.0",
     "@nestjs/websockets": "^11.1.9",
     "@prisma/client": "^5.22.0",
+    "bullmq": "^5.66.4",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.3",
     "concurrently": "^9.2.1",
@@ -109,7 +112,8 @@
       "^yes/mongodb(|/.*)$": "<rootDir>/libs/mongodb/src/$1",
       "^yes/constants(|/.*)$": "<rootDir>/libs/constants/src/$1",
       "^yes/decorators(|/.*)$": "<rootDir>/libs/decorators/src/$1",
-      "^@app/redis(|/.*)$": "<rootDir>/libs/redis/src/$1"
+      "^@app/redis(|/.*)$": "<rootDir>/libs/redis/src/$1",
+      "^@app/bullmq(|/.*)$": "<rootDir>/libs/bullmq/src/$1"
     }
   }
 }

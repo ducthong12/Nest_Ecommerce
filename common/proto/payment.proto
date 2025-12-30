@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package payment;
+
+service PaymentService {
+  rpc CreatePayment (CreateOrderRequest) returns (CreateOrderResponse);
+}
+
+message Empty {}
+
+message CreatePaymentRequest {
+  number order_id = 1;
+  number amount = 2;
+  string status = 3;
+}
+
+message CreatPaymentResponse {
+  number order_id = 1;
+  number amount = 2;
+  string status = 3;
+}
