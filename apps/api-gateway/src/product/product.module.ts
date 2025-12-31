@@ -14,7 +14,7 @@ import { join } from 'path';
         options: {
           package: NAME_SERVICE_GRPC.PRODUCT_PACKAGE,
           protoPath: join(__dirname, '/product.proto'),
-          url: `127.0.0.1:${process.env.PRODUCT_PORT_GRPC}`,
+          url: `127.0.0.1:50052`,
         },
       },
     ]),
