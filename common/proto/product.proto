@@ -14,15 +14,16 @@ service ProductService {
 
 message CreateProductRequest {
   string name = 1;
-  string description = 2;
-  double price = 3;     // float/number
-  string sku = 4;
-  optional string image_url = 5;
-  optional bool is_active = 6;
-  int32 user_id = 7;    // ID từ Postgres
-  string brand = 8;     // ObjectId string
-  string category = 9;  // ObjectId string
-  repeated SpecificationItem specifications = 10;
+  optional string description = 2;
+  optional string thumbnail_url = 3;
+  optional bool is_active = 4;
+
+  int32 user_id = 5;        
+  string brand = 6;         
+  string category = 7;      
+
+  repeated ProductVariant variants = 8;
+  repeated SpecificationItem specifications = 9;
 }
 
 message FindProductRequest {
@@ -86,8 +87,19 @@ message BrandResponse {
   optional string description = 2;
 }
 
+message ProductVariant {
+  string sku = 1;
+  double price = 2;
+  optional string image_url = 3;
+  repeated VariantAttribute attributes = 4;
+}
+
+message VariantAttribute {
+  string k = 1;
+  string v = 2;
+}
+
 message SpecificationItem {
-  string k = 1; // Key
-  string v = 2; // Value
-  optional string u = 3; // Unit (Optional vì có dấu ?)
+  string key = 1;
+  string value = 2;
 }

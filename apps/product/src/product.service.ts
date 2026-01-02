@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Product, ProductDocument } from '../schemas/product.schema';
 import { Model, Types } from 'mongoose';
@@ -8,6 +8,7 @@ import { Category } from '../schemas/category.schema';
 import { CreateBrandDto } from 'common/dto/product/create-brand.dto';
 import { Brand } from '../schemas/brand.schema';
 import { CreateCategoryDto } from 'common/dto/product/create-category.dto';
+import { ClientKafka } from '@nestjs/microservices';
 
 @Injectable()
 export class ProductService {
@@ -15,16 +16,53 @@ export class ProductService {
     @InjectModel(Product.name) private productModel: Model<ProductDocument>,
     @InjectModel(Category.name) private categoryModel: Model<Category>,
     @InjectModel(Brand.name) private brandModel: Model<Brand>,
+    @Inject('PRODUCT_KAFKA_CLIENT') private readonly kafkaClient: ClientKafka,
   ) {}
 
   // 1. Tạo mới
   async create(createProductDto: CreateProductDto): Promise<Product> {
+    console.log('Creating product:', createProductDto);
+    const prices = createProductDto.variants.map((v) => v.price);
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+
     const newProduct = new this.productModel({
       ...createProductDto,
+      min_price: minPrice,
+      max_price: maxPrice,
+      sold_count: 0,
+      rating: 0.0,
+      likesCount: 0,
+      viewCount: 0,
       brand: new Types.ObjectId(createProductDto.brand),
       category: new Types.ObjectId(createProductDto.category),
     });
-    return newProduct.save();
+    const savedProduct = await newProduct.save();
+
+    const kafkaPayload = {
+      id: savedProduct._id.toString(), // Quan trọng: ES cần ID string
+      name: savedProduct.name,
+      description: savedProduct.description,
+      thumbnail_url: savedProduct.thumbnail_url,
+      min_price: savedProduct.min_price,
+      max_price: savedProduct.max_price,
+      brand_id: savedProduct.brand.toString(),
+      category_id: savedProduct.category.toString(),
+      variants: savedProduct.variants.map((v) => ({
+        sku: v.sku,
+        price: v.price,
+        image_url: v.image_url,
+        attributes: v.attributes.map((attr) => ({
+          k: attr.k,
+          v: attr.v,
+        })),
+      })),     
+      specifications: savedProduct.specifications,
+    };
+
+    this.kafkaClient.emit('search.create_product', kafkaPayload);
+
+    return savedProduct;
   }
 
   // 2. Lấy danh sách (Có phân trang, search, sort, populate tối ưu)

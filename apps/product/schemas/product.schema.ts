@@ -5,52 +5,99 @@ import { Category } from './category.schema';
 
 export type ProductDocument = HydratedDocument<Product>;
 
+// 1. Định nghĩa Schema cho thuộc tính biến thể (Ví dụ: Màu=Đỏ, Size=XL)
+@Schema({ _id: false }) // Không cần ID riêng cho cái này
+export class VariantAttribute {
+  @Prop({ required: true })
+  k: string; // Key: "Color", "Size", "Storage"
+
+  @Prop({ required: true })
+  v: string; // Value: "Red", "XL", "256GB"
+}
+
+// 2. Định nghĩa Schema cho từng Biến thể (Variant)
+@Schema()
+export class ProductVariant {
+  // Mỗi variant tự có _id riêng để dễ thêm vào giỏ hàng
+  _id: mongoose.Types.ObjectId; 
+
+  @Prop({ required: true, unique: true })
+  sku: string; // SKU của biến thể (VD: IP15-RED-256)
+
+  @Prop({ required: true })
+  price: number; // Giá bán của biến thể này
+
+  @Prop({ default: 0 })
+  original_price: number; // Giá gốc (để gạch đi nếu giảm giá)
+
+  @Prop()
+  image_url: string; // Ảnh riêng của biến thể (VD: Ảnh cái áo màu đỏ)
+
+  // Kho hàng (Snapshot để hiển thị thôi, tồn kho thật xử lý ở Redis/SQL service Inventory)
+  @Prop({ default: 0 })
+  stock_snapshot: number; 
+
+  // Các thuộc tính định nghĩa biến thể này
+  @Prop({ type: [VariantAttribute], default: [] })
+  attributes: VariantAttribute[]; 
+}
+
+const ProductVariantSchema = SchemaFactory.createForClass(ProductVariant);
+
+// 3. Schema Product Chính
 @Schema({ timestamps: true })
 export class Product {
-  @Prop({ required: true, index: true }) // Index để search tên cho nhanh
+  @Prop({ required: true, index: true, text: true }) // Text index để search
   name: string;
 
   @Prop()
   description: string;
 
-  @Prop({ required: true })
-  price: number; // Trong JS/TS, số là Number (tương đương Float trong DB)
-
-  @Prop({ required: true, unique: true }) // SKU không được trùng
-  sku: string;
-
-  @Prop()
-  imageUrl: string;
-
-  @Prop({ default: true })
-  isActive: boolean;
-
-  // --- External Reference (Identity Service) ---
-  @Prop({ type: Number, index: true }) // Lưu ID từ Postgres, đánh index để query theo user nhanh
+  // --- External Reference ---
+  @Prop({ type: Number, index: true })
   userId: number;
 
-  // --- Internal Relations (MongoDB) ---
-  // Lưu ObjectId nhưng trỏ tới (ref) Schema Brand
+  // --- Internal Relations ---
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Brand' })
   brand: Brand;
 
-  @Prop({
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Category',
-    required: true,
-  })
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true })
   category: Category;
 
-  // --- Stats (Denormalization) ---
+  // --- Variant System ---
+  // Mảng chứa các biến thể
+  @Prop({ type: [ProductVariantSchema], default: [] })
+  variants: ProductVariant[];
+
+  // --- Price Range (Để sort và filter ở trang danh sách) ---
+  // Vì giá nằm trong variants, ta cần cache giá min/max ra ngoài để query cho nhanh
+  @Prop({ default: 0, index: true })
+  min_price: number;
+
+  @Prop({ default: 0, index: true })
+  max_price: number;
+
+  // --- General Info ---
+  @Prop()
+  thumbnail_url: string; // Ảnh đại diện chung của sản phẩm
+
+  @Prop({ default: true, index: true })
+  isActive: boolean;
+
+  // --- Stats ---
   @Prop({ default: 0 })
   likesCount: number;
 
   @Prop({ default: 0 })
   viewCount: number;
 
-  @Prop({ default: 0.0 })
+  @Prop({ default: 0.0, index: true })
   rating: number;
 
+  @Prop({ default: 0 })
+  sold_count: number; // Tổng số lượng đã bán (cộng dồn từ các variants)
+
+  // Thông số kỹ thuật chung (Dùng lại class cũ của bạn)
   @Prop({
     type: [
       {
@@ -59,24 +106,27 @@ export class Product {
         u: { type: String },
       },
     ],
-    _id: false, // Không cần tạo _id cho từng item trong mảng để nhẹ DB
+    _id: false,
   })
   specifications: Specification[];
 }
 
-// Định nghĩa cấu trúc của một thông số
+// Class Specification cũ của bạn
 export class Specification {
   @Prop({ required: true })
-  k: string; // Key: ví dụ "Dung lượng pin", "Chất liệu"
-
+  k: string;
   @Prop({ required: true })
-  v: string; // Value: ví dụ "5000mAh", "Titanium"
-
+  v: string;
   @Prop()
-  u?: string; // Unit (không bắt buộc): ví dụ "mAh", "inch", "GB"
+  u?: string;
 }
 
 export const ProductSchema = SchemaFactory.createForClass(Product);
 
-// Index text để phục vụ chức năng tìm kiếm sản phẩm cơ bản
+// --- Indexes ---
+// Index text tìm kiếm tên và mô tả
 ProductSchema.index({ name: 'text', description: 'text' });
+// Index để lọc theo giá
+ProductSchema.index({ min_price: 1, max_price: 1 });
+// Index để tìm sản phẩm theo thuộc tính variant (VD: Tìm tất cả áo màu Đỏ)
+ProductSchema.index({ 'variants.attributes.k': 1, 'variants.attributes.v': 1 });
