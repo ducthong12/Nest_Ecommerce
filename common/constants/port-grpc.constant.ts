@@ -7,4 +7,6 @@ export const NAME_SERVICE_GRPC = {
   PRODUCT_PACKAGE: 'product',
   INVENTORY_SERVICE: 'InventoryService',
   INVENTORY_PACKAGE: 'inventory',
+  PAYMENT_SERVICE: 'PaymentService',
+  PAYMENT_PACKAGE: 'payment',
 };

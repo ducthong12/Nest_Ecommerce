@@ -1,4 +1,9 @@
-import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import {
+  Injectable,
+  OnModuleInit,
+  OnModuleDestroy,
+  Inject,
+} from '@nestjs/common';
 import Redis from 'ioredis';
 
 export interface ReserveResult {
@@ -7,82 +12,58 @@ export interface ReserveResult {
 }
 
 @Injectable()
-export class RedisService implements OnModuleInit, OnModuleDestroy {
-  private redisClient: Redis;
+export class RedisService {
+  private readonly RESERVE_STOCK_SCRIPT = `
+    local failedKeys = {}
+    local failedCount = 0
 
-  onModuleInit() {
-    this.redisClient = new Redis({
-      host: process.env.REDIS_HOST || 'localhost',
-      port: 6379,
-    });
+    -- BƯỚC 1: KIỂM TRA (CHECK PHASE)
+    for i = 1, #ARGV, 2 do
+      local key = ARGV[i]
+      local qty = tonumber(ARGV[i+1])
+      local currentStock = tonumber(redis.call('GET', key) or 0)
 
-    this.registerScripts();
-  }
+      if currentStock < qty then
+        failedCount = failedCount + 1
+        failedKeys[failedCount] = key -- Lưu key bị lỗi vào mảng
+    end
+    end
 
-  onModuleDestroy() {
-    this.redisClient.disconnect();
-  }
+    -- Nếu có bất kỳ món nào lỗi -> Trả về danh sách key lỗi ngay
+    if failedCount > 0 then
+      return failedKeys
+    end
 
-  private registerScripts() {
-    this.redisClient.defineCommand('reserveStock', {
-      numberOfKeys: 0,
-      lua: `
-        local failedKeys = {}
-        local failedCount = 0
+    -- BƯỚC 2: TRỪ KHO (COMMIT PHASE)
+    -- Chỉ chạy khi tất cả đều đủ hàng
+    for i = 1, #ARGV, 2 do
+      local key = ARGV[i]
+      local qty = tonumber(ARGV[i+1])
+      redis.call('DECRBY', key, qty)
+    end
 
-        -- BƯỚC 1: KIỂM TRA (CHECK PHASE)
-        for i = 1, #ARGV, 2 do
-          local key = ARGV[i]
-          local qty = tonumber(ARGV[i+1])
-          local currentStock = tonumber(redis.call('GET', key) or 0)
+    return nil -- Trả về nil nghĩa là thành công
+  `;
 
-          if currentStock < qty then
-              failedCount = failedCount + 1
-              failedKeys[failedCount] = key -- Lưu key bị lỗi vào mảng
-          end
-        end
+  private readonly RELEASE_STOCK_SCRIPT = `
+    for i = 1, #ARGV, 2 do
+      local key = ARGV[i]
+      local qty = tonumber(ARGV[i+1])
+      redis.call('INCRBY', key, qty)
+    end
+    return 1
+  `;
 
-        -- Nếu có bất kỳ món nào lỗi -> Trả về danh sách key lỗi ngay
-        if failedCount > 0 then
-          return failedKeys
-        end
+  private readonly ADD_STOCK_SCRIPT = `
+    for i = 1, #ARGV, 2 do
+      local key = ARGV[i]
+      local qty = tonumber(ARGV[i+1])
+      redis.call('INCRBY', key, qty)
+    end
+    return 1
+  `;
 
-        -- BƯỚC 2: TRỪ KHO (COMMIT PHASE)
-        -- Chỉ chạy khi tất cả đều đủ hàng
-        for i = 1, #ARGV, 2 do
-          local key = ARGV[i]
-          local qty = tonumber(ARGV[i+1])
-          redis.call('DECRBY', key, qty)
-        end
-
-        return nil -- Trả về nil nghĩa là thành công
-      `,
-    });
-
-    this.redisClient.defineCommand('releaseStock', {
-      numberOfKeys: 0,
-      lua: `
-        for i = 1, #ARGV, 2 do
-          local key = ARGV[i]
-          local qty = tonumber(ARGV[i+1])
-          redis.call('INCRBY', key, qty)
-        end
-        return 1
-      `,
-    });
-
-    this.redisClient.defineCommand('addStock', {
-      numberOfKeys: 0,
-      lua: `
-        for i = 1, #ARGV, 2 do
-          local key = ARGV[i]
-          local qty = tonumber(ARGV[i+1])
-          redis.call('INCRBY', key, qty)
-        end
-        return 1
-      `,
-    });
-  }
+  constructor(@Inject('REDIS_CLIENT') private readonly redisClient: Redis) {}
 
   async reserveAtomic(
     items: { productId: string; quantity: number }[],
@@ -95,9 +76,16 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       args.push(item.quantity);
     }
 
+    if (!this.redisClient) {
+      throw new Error('Redis client not initialized');
+    }
+
     try {
-      // @ts-ignore
-      const result = await this.redisClient.reserveStock(...args);
+      const result = await this.redisClient.eval(
+        this.RESERVE_STOCK_SCRIPT,
+        0,
+        ...args,
+      );
       if (!result) {
         return { success: true, failedProductIds: [] };
       }
@@ -125,8 +113,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     }
 
     try {
-      // @ts-ignore
-      await this.redisClient.releaseStock(...args);
+      await this.redisClient.eval(this.RELEASE_STOCK_SCRIPT, 0, ...args);
     } catch (error) {
       console.error('Redis Release Error:', error);
     }
@@ -138,13 +125,16 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }): Promise<void> {
     if (!items) return;
 
+    if (!this.redisClient) {
+      throw new Error('Redis client not initialized');
+    }
+
     const args = [];
     args.push(`inventory:product:${items.productId}`);
     args.push(items.quantity);
 
     try {
-      // @ts-ignore
-      await this.redisClient.addStock(...args);
+      await this.redisClient.eval(this.ADD_STOCK_SCRIPT, 0, ...args);
     } catch (error) {
       throw new Error('Redis Add Stock Failed');
     }
