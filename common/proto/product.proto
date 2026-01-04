@@ -6,6 +6,7 @@ import "google/protobuf/empty.proto";
 
 service ProductService {
   rpc CreateProduct (CreateProductRequest) returns (ProductResponse);
+  rpc UpdateProduct (UpdateProductRequest) returns (ProductResponse);
   rpc FindAllProducts (FindProductRequest) returns (ProductListResponse);
   rpc FindOneProduct (FindOneRequest) returns (ProductResponse);
   rpc CreateCategory (CreateCategoryRequest) returns (CategoryResponse);
@@ -24,6 +25,20 @@ message CreateProductRequest {
 
   repeated ProductVariant variants = 8;
   repeated SpecificationItem specifications = 9;
+}
+
+message UpdateProductRequest {
+  int32 id = 1;
+  optional string name = 2;
+  optional string description = 3;
+  optional string thumbnail_url = 4;
+  optional bool is_active = 5;
+       
+  optional string brand = 6;         
+  optional string category = 7;      
+
+  optional repeated ProductVariant variants = 8;
+  optional repeated SpecificationItem specifications = 9;
 }
 
 message FindProductRequest {

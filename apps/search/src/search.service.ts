@@ -6,7 +6,6 @@ export class SearchService {
   constructor(private readonly elasticsearchService: ElasticsearchService) {}
 
   async createProduct(data: any) {
-    console.log('Indexing product in Elasticsearch:', data);
     await this.elasticsearchService.index({
       index: 'products',
       id: data.id, 

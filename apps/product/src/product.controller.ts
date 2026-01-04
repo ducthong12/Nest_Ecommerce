@@ -5,6 +5,7 @@ import { CreateProductDto } from 'common/dto/product/create-product.dto';
 import { FilterProductDto } from 'common/dto/product/filter-product.dto';
 import { CreateCategoryDto } from 'common/dto/product/create-category.dto';
 import { CreateBrandDto } from 'common/dto/product/create-brand.dto';
+import { UpdateProductDto } from 'common/dto/product/update-product.dto';
 
 @Controller()
 export class ProductController {
@@ -13,6 +14,12 @@ export class ProductController {
   @GrpcMethod('ProductService', 'CreateProduct')
   async createProduct(data: CreateProductDto) {
     const result = await this.productService.create(data);
+    return this.mapToProto(result);
+  }
+
+  @GrpcMethod('ProductService', 'UpdateProduct')
+  async updateProduct(data: UpdateProductDto) {
+    const result = await this.productService.update(data.id, data);
     return this.mapToProto(result);
   }
 
@@ -43,14 +50,10 @@ export class ProductController {
     return result;
   }
 
-  // Helper function để map Mongo Document -> Proto Message
-  // Vì Mongo dùng _id (Object), Proto dùng id (String) và snake_case
   private mapToProto(product: any) {
     return {
       ...product,
       id: product._id.toString(),
-      brand_name: product.brand?.name || '',
-      category_name: product.category?.name || '',
       created_at: product.createdAt ? product.createdAt.toISOString() : '',
     };
   }

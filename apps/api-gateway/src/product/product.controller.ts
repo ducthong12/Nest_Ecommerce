@@ -3,6 +3,7 @@ import { ProductService } from './product.service';
 import { CreateProductDto } from 'common/dto/product/create-product.dto';
 import { CreateCategoryDto } from 'common/dto/product/create-category.dto';
 import { CreateBrandDto } from 'common/dto/product/create-brand.dto';
+import { UpdateProductDto } from 'common/dto/product/update-product.dto';
 
 @Controller('product')
 export class ProductController {
@@ -23,13 +24,13 @@ export class ProductController {
     return await this.productService.findOneProduct(id);
   }
 
-  // @Patch('updateProduct')
-  // updateProduct(updateProductDto: UpdateProductDto) {
-  //   return this.productService.updateProduct(
-  //     updateProductDto.id,
-  //     updateProductDto,
-  //   );
-  // }
+  @Patch('updateProduct')
+  updateProduct(updateProductDto: UpdateProductDto) {
+    return this.productService.updateProduct(
+      updateProductDto.id,
+      updateProductDto,
+    );
+  }
 
   // @Delete('removeProduct')
   // removeProduct(id: number) {

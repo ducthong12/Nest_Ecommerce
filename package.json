@@ -26,6 +26,7 @@
     "start:inventory": "nest start inventory --watch",
     "start:product": "nest start product --watch",
     "start:payment": "nest start payment --watch",
+    "start:search": "nest start search --watch",
     "start:nodeA": "concurrently \"npm run start:apigateway --watch\"",
     "start:nodeB": "concurrently \"npm run start:user\" \"npm run start:inventory\" \"npm run start:product\" \"npm run start:order\" \"npm run start:payment\" \"npm run start:search\"",
     "generate:prisma": "concurrently \"npx prisma generate --schema=apps/user/prisma/schema.prisma\" \"npx prisma generate --schema=apps/order/prisma/schema.prisma\" \"npx prisma generate --schema=apps/inventory/prisma/schema.prisma\" \"npx prisma generate --schema=apps/payment/prisma/schema.prisma\"",
