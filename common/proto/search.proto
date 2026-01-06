@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package search;
+
+service SearchService {
+  rpc HandleProductSearch (Empty) returns (SearchProductResponse);
+}
+
+message Empty {}
+
+message ProductVariant {
+  string sku = 1;
+  double price = 2;
+  optional string image_url = 3;
+  repeated VariantAttribute attributes = 4;
+}
+
+message VariantAttribute {
+  string k = 1;
+  string v = 2;
+}
+
+message SpecificationItem {
+  string key = 1;
+  string value = 2;
+}
+
+message ProductResponse {
+  string id = 1;       
+  string name = 2;
+  string description = 3;
+  string thumbnail_url = 6;
+  bool is_active = 7;
+  int32 user_id = 8;
+  
+  // Quan hệ (Populate) trả về Object hoặc String tùy logic
+  string brand_name = 9;   
+  string category_name = 10;
+  
+  int32 view_count = 11;
+  int32 likes_count = 12;
+  string created_at = 13;
+  repeated SpecificationItem specifications = 14;
+  repeated ProductVariant variants = 15;
+
+  double min_price = 16;
+  double max_price = 17;
+}
+
+message SearchProductResponse {
+  repeated ProductResponse products = 1;
+}

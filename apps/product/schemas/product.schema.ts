@@ -19,7 +19,7 @@ export class VariantAttribute {
 @Schema()
 export class ProductVariant {
   // Mỗi variant tự có _id riêng để dễ thêm vào giỏ hàng
-  _id: mongoose.Types.ObjectId; 
+  _id: mongoose.Types.ObjectId;
 
   @Prop({ required: true, unique: true })
   sku: string; // SKU của biến thể (VD: IP15-RED-256)
@@ -31,15 +31,15 @@ export class ProductVariant {
   original_price: number; // Giá gốc (để gạch đi nếu giảm giá)
 
   @Prop()
-  image_url: string; // Ảnh riêng của biến thể (VD: Ảnh cái áo màu đỏ)
+  imageUrl: string; // Ảnh riêng của biến thể (VD: Ảnh cái áo màu đỏ)
 
   // Kho hàng (Snapshot để hiển thị thôi, tồn kho thật xử lý ở Redis/SQL service Inventory)
   @Prop({ default: 0 })
-  stock_snapshot: number; 
+  stock_snapshot: number;
 
   // Các thuộc tính định nghĩa biến thể này
   @Prop({ type: [VariantAttribute], default: [] })
-  attributes: VariantAttribute[]; 
+  attributes: VariantAttribute[];
 }
 
 const ProductVariantSchema = SchemaFactory.createForClass(ProductVariant);
@@ -61,7 +61,11 @@ export class Product {
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Brand' })
   brand: Brand;
 
-  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true })
+  @Prop({
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Category',
+    required: true,
+  })
   category: Category;
 
   // --- Variant System ---
@@ -72,14 +76,14 @@ export class Product {
   // --- Price Range (Để sort và filter ở trang danh sách) ---
   // Vì giá nằm trong variants, ta cần cache giá min/max ra ngoài để query cho nhanh
   @Prop({ default: 0, index: true })
-  min_price: number;
+  minPrice: number;
 
   @Prop({ default: 0, index: true })
-  max_price: number;
+  maxPrice: number;
 
   // --- General Info ---
   @Prop()
-  thumbnail_url: string; // Ảnh đại diện chung của sản phẩm
+  thumbnailUrl: string; // Ảnh đại diện chung của sản phẩm
 
   @Prop({ default: true, index: true })
   isActive: boolean;
@@ -109,6 +113,9 @@ export class Product {
     _id: false,
   })
   specifications: Specification[];
+
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 // Class Specification cũ của bạn
@@ -127,6 +134,6 @@ export const ProductSchema = SchemaFactory.createForClass(Product);
 // Index text tìm kiếm tên và mô tả
 ProductSchema.index({ name: 'text', description: 'text' });
 // Index để lọc theo giá
-ProductSchema.index({ min_price: 1, max_price: 1 });
+ProductSchema.index({ minPrice: 1, maxPrice: 1 });
 // Index để tìm sản phẩm theo thuộc tính variant (VD: Tìm tất cả áo màu Đỏ)
 ProductSchema.index({ 'variants.attributes.k': 1, 'variants.attributes.v': 1 });

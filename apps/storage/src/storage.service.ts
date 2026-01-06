@@ -1,4 +1,4 @@
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { Injectable } from '@nestjs/common';
 import S3 from './config/s3.config';
 import { getSignedUrl } from '@aws-sdk/cloudfront-signer';
@@ -54,4 +54,19 @@ export class StorageService {
       throw error;
     }
   }
+
+  async getUploadUrl(data: {
+    fileName: string;
+    fileType: string;
+  }){
+    const key = `${new Date().getTime()}-${data.fileName}`;
+    const command = new PutObjectCommand({
+      Bucket: process.env.AWS_BUCKET_NAME,
+      Key: key,
+      ContentType: data.fileType,
+    });
+
+    // const publicUrl = getSignedUrl(this.s3Client, command, { expiresIn: 3600 });
+  }
+  
 }

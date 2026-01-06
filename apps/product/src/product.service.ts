@@ -1,8 +1,11 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Product, ProductDocument } from '../schemas/product.schema';
-import { Model, Types } from 'mongoose';
-import { CreateProductDto, CreateProductVariantDto } from 'common/dto/product/create-product.dto';
+import { Model, ObjectId, Types } from 'mongoose';
+import {
+  CreateProductDto,
+  CreateProductVariantDto,
+} from 'common/dto/product/create-product.dto';
 import { FilterProductDto } from 'common/dto/product/filter-product.dto';
 import { Category } from '../schemas/category.schema';
 import { CreateBrandDto } from 'common/dto/product/create-brand.dto';
@@ -21,27 +24,75 @@ export class ProductService {
   ) {}
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
-    const { minPrice, maxPrice } = this.calculateMinMaxPrice(createProductDto.variants);
+    const { minPrice, maxPrice } = this.calculateMinMaxPrice(
+      createProductDto.variants,
+    );
 
     const newProduct = new this.productModel({
       ...createProductDto,
-      min_price: minPrice,
-      max_price: maxPrice,
-      sold_count: 0,
+      minPrice: minPrice,
+      maxPrice: maxPrice,
+      soldCount: 0,
       rating: 0.0,
-      likes_count: 0,
-      view_count: 0,
+      likesCount: 0,
+      viewCount: 0,
       brand: new Types.ObjectId(createProductDto.brand),
       category: new Types.ObjectId(createProductDto.category),
     });
-    const savedProduct = await newProduct.save();
-    const { brand_name, category_name } = await this.getBrandProductNameById(createProductDto.brand, createProductDto.category);
 
-    const kafkaPayload = this.prepareKafkaPayloadCreate(savedProduct._id.toString(), { ...savedProduct.toObject(), brand_name, category_name });
+    const savedProduct = await newProduct.save();
+    const { brand_name, category_name } = await this.getBrandProductNameById(
+      createProductDto.brand,
+      createProductDto.category,
+    );
+
+    const kafkaPayload = this.prepareKafkaPayloadCreate(
+      savedProduct._id.toString(),
+      { ...savedProduct.toObject(), brand_name, category_name },
+    );
 
     this.kafkaClient.emit('search.create_product', kafkaPayload);
 
     return savedProduct;
+  }
+
+  async createMany({
+    products,
+  }: {
+    products: CreateProductDto[];
+  }): Promise<{ products: Product[] }> {
+    const data = products.map((dto) => {
+      const { minPrice, maxPrice } = this.calculateMinMaxPrice(dto.variants);
+      return {
+        ...dto,
+        minPrice: minPrice,
+        maxPrice: maxPrice,
+        soldCount: 0,
+        rating: 0.0,
+        likesCount: 0,
+        viewCount: 0,
+        brand: new Types.ObjectId(dto.brand),
+        category: new Types.ObjectId(dto.category),
+      };
+    });
+
+    const newProductArr = await this.productModel.insertMany(data);
+
+    for (const savedProduct of newProductArr) {
+      const { brand_name, category_name } = await this.getBrandProductNameById(
+        savedProduct.brand.toString(),
+        savedProduct.category.toString(),
+      );
+
+      const kafkaPayload = this.prepareKafkaPayloadCreate(
+        savedProduct._id.toString(),
+        { ...savedProduct.toObject(), brand_name, category_name },
+      );
+
+      this.kafkaClient.emit('search.create_product', kafkaPayload);
+    }
+
+    return { products: newProductArr as unknown as Product[] };
   }
 
   async findAll(query: FilterProductDto) {
@@ -111,21 +162,48 @@ export class ProductService {
     return product as Product;
   }
 
-  async update(
-    id: number,
-    updateData: Partial<CreateProductDto>,
-  ): Promise<Product> {
+  async update(id: string, updateData: UpdateProductDto): Promise<Product> {
     const updatedProduct = await this.productModel
       .findByIdAndUpdate(id, updateData, { new: true })
       .lean();
 
     if (!updatedProduct) throw new NotFoundException('Not found product');
 
-    const kafkaPayload = this.prepareKafkaPayloadUpdate(id.toString(), updatedProduct);
+    const kafkaPayload = this.prepareKafkaPayloadUpdate(
+      id.toString(),
+      updateData,
+    );
 
     this.kafkaClient.emit('search.update_product', kafkaPayload);
 
     return updatedProduct as Product;
+  }
+
+  async updateMany(updateDataMany: Array<UpdateProductDto>): Promise<boolean> {
+    const updatedProductArr = await this.productModel
+      .updateMany(
+        {
+          _id: {
+            $in: updateDataMany.map((data) => new Types.ObjectId(data.id)),
+          },
+        },
+        { $set: updateDataMany },
+      )
+      .lean();
+
+    if (!updatedProductArr)
+      throw new NotFoundException('Not found array product');
+
+    for (const data of updateDataMany) {
+      const kafkaPayload = this.prepareKafkaPayloadUpdate(
+        data.id.toString(),
+        data,
+      );
+
+      this.kafkaClient.emit('search.update_product', kafkaPayload);
+    }
+
+    return true;
   }
 
   async createCategory(
@@ -148,12 +226,15 @@ export class ProductService {
     return { minPrice, maxPrice };
   }
 
-  private getBrandProductNameById = async (brandId?: string, categoryId?: string) => {
-    let brand = undefined, category = undefined;
+  private getBrandProductNameById = async (
+    brandId?: string,
+    categoryId?: string,
+  ) => {
+    let brand = undefined,
+      category = undefined;
 
-    if(brandId)
-      brand = await this.brandModel.findById(brandId).lean();
-    if(categoryId)
+    if (brandId) brand = await this.brandModel.findById(brandId).lean();
+    if (categoryId)
       category = await this.categoryModel.findById(categoryId).lean();
 
     return {
@@ -162,40 +243,55 @@ export class ProductService {
     };
   };
 
-  private prepareKafkaPayloadCreate = (id: string, product: Product & { brand_name: string; category_name: string }) => {
+  private prepareKafkaPayloadCreate = (
+    id: string,
+    product: Product & {
+      brand_name: string;
+      category_name: string;
+      createdAt: Date;
+    },
+  ) => {
     const kafkaPayload = {
-      ...product,
-      id: id.toString(),
-      brand_id: product.brand.toString(),
-      category_id: product.category.toString(),
-      brand_name: product.brand_name,
-      category_name: product.category_name,
+      id: id,
+      name: product.name,
+      description: product.description,
+      thumbnailUrl: product.thumbnailUrl,
+      minPrice: product.minPrice,
+      maxPrice: product.maxPrice,
+      brandId: product.brand.toString(),
+      categoryId: product.category.toString(),
+      brandName: product.brand_name,
+      categoryName: product.category_name,
       variants: product.variants.map((v) => ({
         sku: v.sku,
         price: v.price,
-        image_url: v.image_url,
+        imageUrl: v.imageUrl,
         attributes: v.attributes.map((attr) => ({
           k: attr.k,
           v: attr.v,
         })),
-      })),     
+      })),
+      specifications: product.specifications,
+      created_at: product.createdAt.toISOString(),
     };
 
     return kafkaPayload;
-  }
+  };
 
-  private prepareKafkaPayloadUpdate = (id: string, product: Partial<Product>) => {
+  private prepareKafkaPayloadUpdate = (
+    id: string,
+    product: UpdateProductDto,
+  ) => {
     const kafkaPayload = {
       ...product,
-      id: id.toString()
+      id: id.toString(),
     };
 
-    if(product.brand)
-      kafkaPayload['brand_id'] = product.brand.toString();
+    if (product.brand) kafkaPayload['brandId'] = product.brand.toString();
 
-    if(product.category)
-      kafkaPayload['category_id'] = product.category.toString();
+    if (product.category)
+      kafkaPayload['categoryId'] = product.category.toString();
 
     return kafkaPayload;
-  }
+  };
 }

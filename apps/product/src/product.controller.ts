@@ -17,9 +17,21 @@ export class ProductController {
     return this.mapToProto(result);
   }
 
+  @GrpcMethod('ProductService', 'CreateManyProduct')
+  async createManyProduct({ products }: { products: CreateProductDto[] }) {
+    const result = await this.productService.createMany({ products });
+    return result;
+  }
+
   @GrpcMethod('ProductService', 'UpdateProduct')
   async updateProduct(data: UpdateProductDto) {
     const result = await this.productService.update(data.id, data);
+    return this.mapToProto(result);
+  }
+
+  @GrpcMethod('ProductService', 'UpdateManyProduct')
+  async updateManyProduct(data: UpdateProductDto[]) {
+    const result = await this.productService.updateMany(data);
     return this.mapToProto(result);
   }
 

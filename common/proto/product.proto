@@ -6,6 +6,7 @@ import "google/protobuf/empty.proto";
 
 service ProductService {
   rpc CreateProduct (CreateProductRequest) returns (ProductResponse);
+  rpc CreateManyProduct (CreateManyProductRequest) returns (ManyProductResponse);
   rpc UpdateProduct (UpdateProductRequest) returns (ProductResponse);
   rpc FindAllProducts (FindProductRequest) returns (ProductListResponse);
   rpc FindOneProduct (FindOneRequest) returns (ProductResponse);
@@ -27,6 +28,10 @@ message CreateProductRequest {
   repeated SpecificationItem specifications = 9;
 }
 
+message CreateManyProductRequest {
+  repeated CreateProductRequest products = 1;
+}
+
 message UpdateProductRequest {
   int32 id = 1;
   optional string name = 2;
@@ -37,8 +42,8 @@ message UpdateProductRequest {
   optional string brand = 6;         
   optional string category = 7;      
 
-  optional repeated ProductVariant variants = 8;
-  optional repeated SpecificationItem specifications = 9;
+  repeated ProductVariant variants = 8;
+  repeated SpecificationItem specifications = 9;
 }
 
 message FindProductRequest {
@@ -59,7 +64,7 @@ message ProductResponse {
   string description = 3;
   double price = 4;
   string sku = 5;
-  string image_url = 6;
+  string thumbnail_url = 6;
   bool is_active = 7;
   int32 user_id = 8;
   
@@ -71,6 +76,10 @@ message ProductResponse {
   int32 likes_count = 12;
   string created_at = 13;
   repeated SpecificationItem specifications = 14;
+}
+
+message ManyProductResponse {
+  repeated ProductResponse products = 1;
 }
 
 message ProductListResponse {

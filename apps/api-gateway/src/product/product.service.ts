@@ -40,6 +40,25 @@ export class ProductService {
     }
   }
 
+  async createManyProduct(createManyProductDto: CreateProductDto[]) {
+    try {
+      return await firstValueFrom(
+        this.productService
+          .createManyProduct({ products: createManyProductDto })
+          .pipe(
+            timeout(10000),
+            catchError((error) => throwError(() => error)),
+          ),
+      );
+    } catch (error) {
+      MicroserviceErrorHandler.handleError(
+        error,
+        `create many product: ${JSON.stringify(createManyProductDto)}`,
+        'Product Service',
+      );
+    }
+  }
+
   async findAllProducts() {
     try {
       return await firstValueFrom(
@@ -108,7 +127,7 @@ export class ProductService {
     }
   }
 
-  async updateProduct(id: number, updateProductDto: UpdateProductDto) {
+  async updateProduct(id: string, updateProductDto: UpdateProductDto) {
     try {
       return await firstValueFrom(
         this.productService.updateProduct({ id, ...updateProductDto }).pipe(

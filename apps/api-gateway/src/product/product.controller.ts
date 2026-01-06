@@ -14,6 +14,11 @@ export class ProductController {
     return await this.productService.createProduct(createProductDto);
   }
 
+  @Post('createManyProduct')
+  async createManyProduct(@Body() createManyProductDto: CreateProductDto[]) {
+    return await this.productService.createManyProduct(createManyProductDto);
+  }
+
   @Get('findAllProducts')
   async findAllProducts() {
     return await this.productService.findAllProducts();

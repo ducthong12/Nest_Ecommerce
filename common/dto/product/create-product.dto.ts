@@ -36,11 +36,11 @@ export class CreateProductVariantDto {
   @Min(0)
   @IsOptional()
   @Type(() => Number)
-  original_price?: number; 
+  original_price?: number;
 
   @IsString()
   @IsOptional()
-  image_url?: string;
+  imageUrl?: string;
 
   @IsArray()
   @ValidateNested({ each: true })
@@ -73,7 +73,7 @@ export class CreateProductDto {
 
   @IsString()
   @IsOptional()
-  thumbnail_url?: string;
+  thumbnailUrl?: string;
 
   @IsBoolean()
   @IsOptional()
@@ -93,7 +93,7 @@ export class CreateProductDto {
 
   @IsArray()
   @ArrayMinSize(1, { message: 'Sản phẩm phải có ít nhất 1 biến thể' })
-  @ValidateNested({ each: true }) 
+  @ValidateNested({ each: true })
   @Type(() => CreateProductVariantDto)
   variants: CreateProductVariantDto[];
 

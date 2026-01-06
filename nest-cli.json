@@ -43,6 +43,11 @@
             "include": "../../../common/proto/payment.proto",
             "outDir": "./dist/apps/api-gateway/payment.proto",
             "watchAssets": true
+          },
+          {
+            "include": "../../../common/proto/search.proto",
+            "outDir": "./dist/apps/api-gateway/search.proto",
+            "watchAssets": true
           }
         ]
       }
@@ -178,7 +183,14 @@
       "entryFile": "main",
       "sourceRoot": "apps/search/src",
       "compilerOptions": {
-        "tsConfigPath": "apps/search/tsconfig.app.json"
+        "tsConfigPath": "apps/search/tsconfig.app.json",
+        "assets": [
+          {
+            "include": "../../../common/proto/search.proto",
+            "outDir": "./dist/apps/search/search.proto",
+            "watchAssets": true
+          }
+        ]
       }
     }
   }

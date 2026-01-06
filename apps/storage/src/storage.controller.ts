@@ -21,8 +21,10 @@ export class StorageController {
     return await this.storageService.uploadFile(file);
   }
 
-  @Get()
-  getHello(): string {
-    return `Storage Service is running`;
+  async getUploadUrl(data: {
+    fileName: string;
+    fileType: string;
+  }){
+    return await this.storageService.getUploadUrl(data);
   }
 }
