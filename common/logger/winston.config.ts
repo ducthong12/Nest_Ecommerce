@@ -9,16 +9,16 @@ export const createLoggerConfig = (appName: string) => {
       format.json(),
     ),
     transports: [
-      new transports.Console({
-        format: format.combine(
-          format.timestamp(),
-          format.ms(),
-          nestWinstonModuleUtilities.format.nestLike(appName, {
-            colors: true,
-            prettyPrint: true,
-          }),
-        ),
-      }),
+      //   new transports.Console({
+      //     format: format.combine(
+      //       format.timestamp(),
+      //       format.ms(),
+      //       nestWinstonModuleUtilities.format.nestLike(appName, {
+      //         colors: true,
+      //         prettyPrint: true,
+      //       }),
+      //     ),
+      //   }),
 
       new transports.DailyRotateFile({
         dirname: `logs/${appName}/error`,
