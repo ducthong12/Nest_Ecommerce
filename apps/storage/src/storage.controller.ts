@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { StorageService } from './storage.service';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { GrpcMethod } from '@nestjs/microservices';
 
 @Controller('storage')
 export class StorageController {
@@ -21,10 +22,12 @@ export class StorageController {
     return await this.storageService.uploadFile(file);
   }
 
-  async getUploadUrl(data: {
-    fileName: string;
-    fileType: string;
-  }){
+  @GrpcMethod('StorageService', 'GetCloudfrontUrl')
+  async getCloudfrontUrl() {
+    return await this.storageService.getCloudfrontUrl();
+  }
+
+  async getUploadUrl(data: { fileName: string; fileType: string }) {
     return await this.storageService.getUploadUrl(data);
   }
 }

@@ -8,6 +8,7 @@ import {
   Payload,
 } from '@nestjs/microservices';
 import { KafkaRetry } from '@common/decorators/kafka-retry.decorator';
+import { SearchProductsDto } from 'common/dto/search/search-products.dto';
 
 @Controller()
 export class SearchController {
@@ -43,7 +44,7 @@ export class SearchController {
   }
 
   @GrpcMethod('SearchService', 'HandleProductSearch')
-  async handleProductSearch(@Payload() message: any) {
+  async handleProductSearch(@Payload() message: SearchProductsDto) {
     return await this.searchService.searchProduct(message);
   }
 }

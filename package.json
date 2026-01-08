@@ -28,7 +28,7 @@
     "start:payment": "nest start payment --watch",
     "start:search": "nest start search --watch",
     "start:nodeA": "concurrently \"npm run start:apigateway --watch\"",
-    "start:nodeB": "concurrently \"npm run start:user\" \"npm run start:inventory\" \"npm run start:product\" \"npm run start:order\" \"npm run start:payment\" \"npm run start:search\"",
+    "start:nodeB": "concurrently \"npm run start:user\" \"npm run start:inventory\" \"npm run start:product\" \"npm run start:order\" \"npm run start:payment\" \"npm run start:search\" \"npm run start:storage\"",
     "generate:prisma": "concurrently \"npx prisma generate --schema=apps/user/prisma/schema.prisma\" \"npx prisma generate --schema=apps/order/prisma/schema.prisma\" \"npx prisma generate --schema=apps/inventory/prisma/schema.prisma\" \"npx prisma generate --schema=apps/payment/prisma/schema.prisma\"",
     "generate:prisma-docs": "concurrently \"npx prisma generate docs --schema=apps/user/prisma/schema.prisma\" \"npx prisma generate docs --schema=apps/order/prisma/schema.prisma\" \"npx prisma generate docs --schema=apps/inventory/prisma/schema.prisma\" \"npx prisma generate docs --schema=apps/payment/prisma/schema.prisma\"",
     "migrate:prisma": "concurrently \"npx prisma migrate dev --schema=apps/user/prisma/schema.prisma\" \"npx prisma migrate dev --schema=apps/order/prisma/schema.prisma\" \"npx prisma migrate dev --schema=apps/inventory/prisma/schema.prisma\" \"npx prisma migrate dev --schema=apps/payment/prisma/schema.prisma\""
@@ -58,14 +58,18 @@
     "class-validator": "^0.14.3",
     "concurrently": "^9.2.1",
     "dotenv": "^17.2.3",
+    "fs": "^0.0.1-security",
     "helmet": "^8.1.0",
     "ioredis": "^5.8.2",
     "kafkajs": "^2.2.4",
     "mongoose": "^9.0.2",
+    "nest-winston": "^1.10.2",
     "prisma": "^5.22.0",
     "prisma-docs-generator": "^0.8.0",
     "reflect-metadata": "^0.2.0",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "winston": "^3.19.0",
+    "winston-daily-rotate-file": "^5.0.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",

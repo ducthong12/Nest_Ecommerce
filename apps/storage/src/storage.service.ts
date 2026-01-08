@@ -1,7 +1,11 @@
-import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  GetObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import { Injectable } from '@nestjs/common';
 import S3 from './config/s3.config';
-import { getSignedUrl } from '@aws-sdk/cloudfront-signer';
+import { getSignedCookies, getSignedUrl } from '@aws-sdk/cloudfront-signer';
 
 @Injectable()
 export class StorageService {
@@ -55,10 +59,7 @@ export class StorageService {
     }
   }
 
-  async getUploadUrl(data: {
-    fileName: string;
-    fileType: string;
-  }){
+  async getUploadUrl(data: { fileName: string; fileType: string }) {
     const key = `${new Date().getTime()}-${data.fileName}`;
     const command = new PutObjectCommand({
       Bucket: process.env.AWS_BUCKET_NAME,
@@ -68,5 +69,40 @@ export class StorageService {
 
     // const publicUrl = getSignedUrl(this.s3Client, command, { expiresIn: 3600 });
   }
-  
+
+  async getCloudfrontUrl() {
+    const privateKey = process.env.AWS_CLOUDFRONT_PRIVATE_KEY;
+    const keyPairId = process.env.AWS_CLOUDFRONT_KEY_PAIR_ID;
+    const cloudFrontDomain = process.env.AWS_CLOUDFRONT_S3_DOMAIN;
+
+    const policy = JSON.stringify({
+      Statement: [
+        {
+          Resource: `${cloudFrontDomain}/*`,
+          Condition: {
+            DateLessThan: {
+              'AWS:EpochTime': Math.floor(Date.now() / 1000) + 60 * 60 * 8,
+            },
+          },
+        },
+      ],
+    });
+
+    const cookiesRes = getSignedCookies({
+      policy,
+      keyPairId,
+      privateKey,
+    });
+
+    const cookies = {
+      cloudfrontPolicy: cookiesRes['CloudFront-Policy'],
+      cloudfrontSignature: cookiesRes['CloudFront-Signature'],
+      cloudfrontKeyPairId: cookiesRes['CloudFront-Key-Pair-Id'],
+    };
+
+    return {
+      cloudFrontDomain: cloudFrontDomain,
+      cookies: cookies,
+    };
+  }
 }

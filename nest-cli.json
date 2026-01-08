@@ -48,6 +48,11 @@
             "include": "../../../common/proto/search.proto",
             "outDir": "./dist/apps/api-gateway/search.proto",
             "watchAssets": true
+          },
+          {
+            "include": "../../../common/proto/storage.proto",
+            "outDir": "./dist/apps/api-gateway/storage.proto",
+            "watchAssets": true
           }
         ]
       }
@@ -67,7 +72,14 @@
       "entryFile": "main",
       "sourceRoot": "apps/storage/src",
       "compilerOptions": {
-        "tsConfigPath": "apps/storage/tsconfig.app.json"
+        "tsConfigPath": "apps/storage/tsconfig.app.json",
+        "assets": [
+          {
+            "include": "../../../common/proto/storage.proto",
+            "outDir": "./dist/apps/storage/storage.proto",
+            "watchAssets": true
+          }
+        ]
       }
     },
     "user": {

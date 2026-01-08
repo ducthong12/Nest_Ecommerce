@@ -3,10 +3,16 @@ syntax = "proto3";
 package search;
 
 service SearchService {
-  rpc HandleProductSearch (Empty) returns (SearchProductResponse);
+  rpc HandleProductSearch (SearchProductRequest) returns (SearchProductResponse);
 }
 
 message Empty {}
+
+message SearchProductRequest {
+  optional int32 from = 1;
+  optional int32 size = 2;
+  optional string valueSearch = 3;
+}
 
 message ProductVariant {
   string sku = 1;

@@ -11,4 +11,6 @@ export const NAME_SERVICE_GRPC = {
   PAYMENT_PACKAGE: 'payment',
   SEARCH_SERVICE: 'SearchService',
   SEARCH_PACKAGE: 'search',
+  STORAGE_SERVICE: 'StorageService',
+  STORAGE_PACKAGE: 'storage',
 };
