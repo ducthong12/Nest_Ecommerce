@@ -7,6 +7,7 @@ import { WinstonModule } from 'nest-winston';
 import { createLoggerConfig } from 'common/logger/winston.config';
 import { LoggingInterceptor } from 'common/interceptor/logging.interceptor';
 import { AllExceptionsFilter } from 'common/filters/all-exceptions.filter';
+import { Partitioners } from 'kafkajs';
 
 async function bootstrap() {
   const app = await NestFactory.create(ProductModule, {
@@ -19,6 +20,23 @@ async function bootstrap() {
       package: NAME_SERVICE_GRPC.PRODUCT_PACKAGE,
       protoPath: join(__dirname, '/product.proto'),
       url: `127.0.0.1:50052`,
+    },
+  });
+
+  app.connectMicroservice<MicroserviceOptions>({
+    transport: Transport.KAFKA,
+    options: {
+      client: {
+        brokers: [process.env.KAFKA_BROKER || 'localhost:9092'],
+      },
+      producer: {
+        createPartitioner: Partitioners.LegacyPartitioner,
+      },
+      consumer: {
+        groupId: 'product-consumer-group',
+        allowAutoTopicCreation: true,
+        fromBeginning: true,
+      },
     },
   });
 

@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import { ProductService } from './product.service';
 import { CreateProductDto } from 'common/dto/product/create-product.dto';
 import { CreateCategoryDto } from 'common/dto/product/create-category.dto';
@@ -19,14 +19,10 @@ export class ProductController {
     return await this.productService.createManyProduct(createManyProductDto);
   }
 
-  @Get('findAllProducts')
-  async findAllProducts() {
-    return await this.productService.findAllProducts();
-  }
-
-  @Get('findOneProduct')
-  async findOneProduct(id: number) {
-    return await this.productService.findOneProduct(id);
+  @Get('findOneProduct/:id')
+  async findOneProduct(@Param('id') id: string) {
+    const result = await this.productService.findOneProduct(id);
+    return result;
   }
 
   @Patch('updateProduct')
@@ -36,11 +32,6 @@ export class ProductController {
       updateProductDto,
     );
   }
-
-  // @Delete('removeProduct')
-  // removeProduct(id: number) {
-  //   return this.productService.removeProduct(id);
-  // }
 
   @Post('createBrand')
   async createBrand(@Body() createBrandDto: CreateBrandDto) {

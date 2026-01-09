@@ -110,6 +110,64 @@ export class SearchService {
     });
   }
 
+  async searchProductInventory(query: SearchProductsDto) {
+    let searchQuery: any;
+    const userId = '1001';
+
+    if (query.valueSearch) {
+      searchQuery = {
+        bool: {
+          must: [
+            {
+              match: {
+                all_text: {
+                  query: query.valueSearch,
+                  operator: 'and',
+                  fuzziness: 'AUTO',
+                  prefix_length: 2,
+                },
+              },
+            },
+            {
+              term: {
+                userId: userId,
+              },
+            },
+          ],
+          should: [
+            {
+              // TĂNG ĐIỂM (BOOST): Nếu khớp chính xác cụm từ thì đưa lên đầu
+              match_phrase: {
+                name: {
+                  query: query.valueSearch,
+                  boost: 5,
+                },
+              },
+            },
+          ],
+        },
+      };
+    } else {
+      searchQuery = { match_all: {} };
+    }
+
+    const result = await this.elasticsearchService.search({
+      index: 'products',
+      from: query.from || 0,
+      size: query.size || 50,
+      query: searchQuery,
+      sort: [{ created_at: 'desc' }],
+    });
+
+    return {
+      total:
+        typeof result.hits.total === 'object'
+          ? result.hits.total.value
+          : result.hits.total,
+      products: result.hits.hits.map((hit) => hit._source),
+    };
+  }
+
   async searchProduct(query: SearchProductsDto) {
     let searchQuery: any;
 
@@ -121,10 +179,15 @@ export class SearchService {
               match: {
                 all_text: {
                   query: query.valueSearch,
-                  operator: 'and', // Bắt buộc có đủ các từ (ví dụ: gõ "16 pro" thì 15 pro sẽ bị loại)
-                  fuzziness: 'AUTO', // Xử lý sai chính tả hoặc viết liền "promax"
-                  prefix_length: 2, // Tăng tốc độ search bằng cách không fuzzy 2 ký tự đầu
+                  operator: 'and',
+                  fuzziness: 'AUTO',
+                  prefix_length: 2,
                 },
+              },
+            },
+            {
+              term: {
+                isActive: true,
               },
             },
           ],

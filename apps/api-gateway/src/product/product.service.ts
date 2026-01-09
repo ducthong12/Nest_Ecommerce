@@ -76,7 +76,7 @@ export class ProductService {
     }
   }
 
-  async findOneProduct(id: number) {
+  async findOneProduct(id: string) {
     try {
       return await firstValueFrom(
         this.productService.findOneProduct({ id }).pipe(

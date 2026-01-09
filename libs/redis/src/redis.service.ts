@@ -139,4 +139,24 @@ export class RedisService {
       throw new Error('Redis Add Stock Failed');
     }
   }
+
+  async setRedisNotExpire(key: string, value: string): Promise<void> {
+    try {
+      await this.redisClient.set(key, value);
+    } catch (error) {
+      throw new Error('Redis Set Key Failed');
+    }
+  }
+
+  async setRedisWithExpire(
+    key: string,
+    value: string,
+    expireInSeconds: number,
+  ): Promise<void> {
+    try {
+      await this.redisClient.set(key, value, 'EX', expireInSeconds);
+    } catch (error) {
+      throw new Error('Redis Set Key with Expire Failed');
+    }
+  }
 }

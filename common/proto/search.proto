@@ -19,6 +19,8 @@ message ProductVariant {
   double price = 2;
   optional string image_url = 3;
   repeated VariantAttribute attributes = 4;
+  int32 stock_snapshot = 5;
+  double original_price = 6;
 }
 
 message VariantAttribute {

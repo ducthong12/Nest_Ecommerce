@@ -29,7 +29,7 @@ async function bootstrap() {
   // Kích hoạt ValidationPipe toàn cục
   // app.useGlobalPipes();
 
-  await app.listen(565656);
+  await app.listen(5656);
 }
 
 bootstrap()

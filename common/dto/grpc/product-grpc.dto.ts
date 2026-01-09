@@ -7,9 +7,11 @@ import { CreateBrandDto } from '../product/create-brand.dto';
 
 export class ProductGrpcDto {
   createProduct: (data: CreateProductDto) => Observable<any>;
-  createManyProduct: (data: { products: CreateProductDto[] }) => Observable<any>;
+  createManyProduct: (data: {
+    products: CreateProductDto[];
+  }) => Observable<any>;
   updateProduct: (data: UpdateProductDto) => Observable<any>;
-  findOneProduct: (data: { id: number }) => Observable<any>;
+  findOneProduct: (data: { id: string }) => Observable<any>;
   findAllProducts: (data: FilterProductDto) => Observable<any>;
   createCategory: (data: CreateCategoryDto) => Observable<any>;
   createBrand: (data: CreateBrandDto) => Observable<any>;
