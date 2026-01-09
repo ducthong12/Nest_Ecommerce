@@ -5,32 +5,50 @@ import { Category } from './category.schema';
 
 export type ProductDocument = HydratedDocument<Product>;
 
+@Schema({ _id: false })
+export class VariantAttribute {
+  @Prop({ required: true })
+  k: string;
+
+  @Prop({ required: true })
+  v: string;
+}
+
+@Schema()
+export class ProductVariant {
+  _id: mongoose.Types.ObjectId;
+
+  @Prop({ required: true, unique: true })
+  sku: string;
+
+  @Prop({ required: true })
+  price: number;
+
+  @Prop({ default: 0 })
+  originalPrice: number;
+
+  @Prop()
+  imageUrl: string;
+
+  @Prop({ default: 0 })
+  stockSnapshot: number;
+
+  @Prop({ type: [VariantAttribute], default: [] })
+  attributes: VariantAttribute[];
+}
+
+const ProductVariantSchema = SchemaFactory.createForClass(ProductVariant);
 @Schema({ timestamps: true })
 export class Product {
-  @Prop({ required: true, index: true }) // Index để search tên cho nhanh
+  @Prop({ required: true, index: true, text: true })
   name: string;
 
   @Prop()
   description: string;
 
-  @Prop({ required: true })
-  price: number; // Trong JS/TS, số là Number (tương đương Float trong DB)
-
-  @Prop({ required: true, unique: true }) // SKU không được trùng
-  sku: string;
-
-  @Prop()
-  imageUrl: string;
-
-  @Prop({ default: true })
-  isActive: boolean;
-
-  // --- External Reference (Identity Service) ---
-  @Prop({ type: Number, index: true }) // Lưu ID từ Postgres, đánh index để query theo user nhanh
+  @Prop({ type: Number, index: true })
   userId: number;
 
-  // --- Internal Relations (MongoDB) ---
-  // Lưu ObjectId nhưng trỏ tới (ref) Schema Brand
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Brand' })
   brand: Brand;
 
@@ -41,15 +59,32 @@ export class Product {
   })
   category: Category;
 
-  // --- Stats (Denormalization) ---
+  @Prop({ type: [ProductVariantSchema], default: [] })
+  variants: ProductVariant[];
+
+  @Prop({ default: 0, index: true })
+  minPrice: number;
+
+  @Prop({ default: 0, index: true })
+  maxPrice: number;
+
+  @Prop()
+  thumbnailUrl: string;
+
+  @Prop({ default: true, index: true })
+  isActive: boolean;
+
   @Prop({ default: 0 })
   likesCount: number;
 
   @Prop({ default: 0 })
   viewCount: number;
 
-  @Prop({ default: 0.0 })
+  @Prop({ default: 0.0, index: true })
   rating: number;
+
+  @Prop({ default: 0 })
+  soldCount: number;
 
   @Prop({
     type: [
@@ -59,24 +94,25 @@ export class Product {
         u: { type: String },
       },
     ],
-    _id: false, // Không cần tạo _id cho từng item trong mảng để nhẹ DB
+    _id: false,
   })
   specifications: Specification[];
+
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-// Định nghĩa cấu trúc của một thông số
 export class Specification {
   @Prop({ required: true })
-  k: string; // Key: ví dụ "Dung lượng pin", "Chất liệu"
-
+  k: string;
   @Prop({ required: true })
-  v: string; // Value: ví dụ "5000mAh", "Titanium"
-
+  v: string;
   @Prop()
-  u?: string; // Unit (không bắt buộc): ví dụ "mAh", "inch", "GB"
+  u?: string;
 }
 
 export const ProductSchema = SchemaFactory.createForClass(Product);
 
-// Index text để phục vụ chức năng tìm kiếm sản phẩm cơ bản
 ProductSchema.index({ name: 'text', description: 'text' });
+ProductSchema.index({ minPrice: 1, maxPrice: 1 });
+ProductSchema.index({ 'variants.attributes.k': 1, 'variants.attributes.v': 1 });

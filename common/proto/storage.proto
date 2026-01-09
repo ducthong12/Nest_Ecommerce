@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package storage;
+
+service StorageService {
+  rpc GetCloudfrontUrl (Empty) returns (GetCloudfrontResponse);
+}
+
+message Empty {}
+
+message CloudFrontCookies {
+  string cloudfront_policy = 1;
+  string cloudfront_signature = 2;
+  string cloudfront_key_pair_id = 3;
+}
+
+message GetCloudfrontResponse {
+  CloudFrontCookies cookies = 1;
+  string cloudFrontDomain = 2;
+}

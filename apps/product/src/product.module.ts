@@ -6,6 +6,8 @@ import { Product, ProductSchema } from '../schemas/product.schema';
 import { Brand, BrandSchema } from '../schemas/brand.schema';
 import { Category, CategorySchema } from '../schemas/category.schema';
 import { MongodbModule } from 'yes/mongodb';
+import { ClientsModule, Transport } from '@nestjs/microservices';
+import { Partitioners } from 'kafkajs';
 
 @Module({
   imports: [
@@ -15,6 +17,23 @@ import { MongodbModule } from 'yes/mongodb';
       { name: Brand.name, schema: BrandSchema },
       { name: Category.name, schema: CategorySchema },
     ]),
+    ClientsModule.register([
+    {
+      name: 'PRODUCT_KAFKA_CLIENT',
+      transport: Transport.KAFKA,
+      options: {
+        client: {
+          clientId: 'product-service',
+          brokers: [process.env.KAFKA_BROKER || 'localhost:9092'],
+        },
+        producer: {
+          allowAutoTopicCreation: true,
+          idempotent: true, // NÊN BẬT: Đảm bảo tin nhắn không bị gửi trùng (Exactly-once)
+          createPartitioner: Partitioners.LegacyPartitioner,
+        },
+      },
+    },
+  ]),
   ],
   controllers: [ProductController],
   providers: [ProductService],

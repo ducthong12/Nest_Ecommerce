@@ -1,13 +1,19 @@
-import { NestFactory } from '@nestjs/core';
+import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { InventoryModule } from './inventory.module';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { join } from 'path';
 import { NAME_SERVICE_GRPC } from '@common/constants/port-grpc.constant';
 import { ValidationPipe } from '@nestjs/common';
 import { Partitioners } from 'kafkajs';
+import { AllExceptionsFilter } from 'common/filters/all-exceptions.filter';
+import { LoggingInterceptor } from 'common/interceptor/logging.interceptor';
+import { WinstonModule } from 'nest-winston';
+import { createLoggerConfig } from 'common/logger/winston.config';
 
 async function bootstrap() {
-  const app = await NestFactory.create(InventoryModule);
+  const app = await NestFactory.create(InventoryModule, {
+    logger: WinstonModule.createLogger(createLoggerConfig('inventory-service')),
+  });
 
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.GRPC,
@@ -36,10 +42,12 @@ async function bootstrap() {
   });
 
   app.useGlobalPipes(new ValidationPipe());
+  const httpAdapter = app.get(HttpAdapterHost);
+  app.useGlobalFilters(new AllExceptionsFilter(httpAdapter));
+  app.useGlobalInterceptors(new LoggingInterceptor());
   app.enableCors();
 
   await app.startAllMicroservices();
-
   await app.listen(3333);
 }
 

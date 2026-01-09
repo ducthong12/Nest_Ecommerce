@@ -12,8 +12,8 @@ import { BullModule } from '@nestjs/bullmq';
         connection: {
           host: config.get('REDIS_HOST'),
           port: config.get('REDIS_PORT') || 6379,
-          username: config.get('REDIS_USER'),
-          password: config.get('REDIS_PASSWORD'),
+          username: config.get('REDIS_USER') || 'default',
+          password: config.get('REDIS_PASSWORD') || '12345678',
         },
       }),
     }),

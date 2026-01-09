@@ -7,5 +7,5 @@ export class ReserveStockDto {
 
   @IsArray()
   @IsNotEmpty()
-  items: { productId: string; quantity: number }[];
+  items: { productId: string; quantity: number; sku: string }[];
 }

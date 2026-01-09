@@ -74,7 +74,6 @@ export class InventoryService {
     // BƯỚC 3: Transaction DB
     const inventoryIds = new Map<string, number>();
     await this.prismaInventory.$transaction(async (tx) => {
-      // Update tồn kho
       for (const [productId, changeAmount] of Object.entries(stockChanges)) {
         const inventory = await tx.inventory.update({
           where: { productId },
@@ -118,7 +117,7 @@ export class InventoryService {
 
   async restockStock(data: RestockStockDto) {
     const result = await this.prismaInventory.inventory.upsert({
-      where: { productId: data.productId },
+      where: { sku: data.sku },
       update: { stockQuantity: { increment: data.quantity } },
       create: {
         productId: data.productId,
@@ -133,7 +132,7 @@ export class InventoryService {
       quantity: data.quantity,
     });
 
-    // this.kafkaClient.emit('inventory.restocked', { productId, quantity });
+    this.kafkaClient.emit('product.restock', data);
 
     return result;
   }
@@ -145,6 +144,10 @@ export class InventoryService {
 
       if (!success) {
         return { success: false, failedProductIds };
+      }
+
+      for (const item of data.items) {
+        this.kafkaClient.emit('product.reserve', item);
       }
 
       return { success: true, failedProductIds };

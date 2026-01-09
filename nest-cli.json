@@ -43,6 +43,16 @@
             "include": "../../../common/proto/payment.proto",
             "outDir": "./dist/apps/api-gateway/payment.proto",
             "watchAssets": true
+          },
+          {
+            "include": "../../../common/proto/search.proto",
+            "outDir": "./dist/apps/api-gateway/search.proto",
+            "watchAssets": true
+          },
+          {
+            "include": "../../../common/proto/storage.proto",
+            "outDir": "./dist/apps/api-gateway/storage.proto",
+            "watchAssets": true
           }
         ]
       }
@@ -62,7 +72,14 @@
       "entryFile": "main",
       "sourceRoot": "apps/storage/src",
       "compilerOptions": {
-        "tsConfigPath": "apps/storage/tsconfig.app.json"
+        "tsConfigPath": "apps/storage/tsconfig.app.json",
+        "assets": [
+          {
+            "include": "../../../common/proto/storage.proto",
+            "outDir": "./dist/apps/storage/storage.proto",
+            "watchAssets": true
+          }
+        ]
       }
     },
     "user": {
@@ -170,6 +187,22 @@
       "sourceRoot": "libs/bullmq/src",
       "compilerOptions": {
         "tsConfigPath": "libs/bullmq/tsconfig.lib.json"
+      }
+    },
+    "search": {
+      "type": "application",
+      "root": "apps/search",
+      "entryFile": "main",
+      "sourceRoot": "apps/search/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/search/tsconfig.app.json",
+        "assets": [
+          {
+            "include": "../../../common/proto/search.proto",
+            "outDir": "./dist/apps/search/search.proto",
+            "watchAssets": true
+          }
+        ]
       }
     }
   }

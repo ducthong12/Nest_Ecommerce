@@ -9,6 +9,7 @@ import { RateLimitGuard } from '@common/guards/rate-limit.guard';
 import { ProductModule } from './product/product.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { OrderModule } from './order/order.module';
+import { SearchModule } from './search/search.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { OrderModule } from './order/order.module';
     ProductModule,
     InventoryModule,
     OrderModule,
+    SearchModule,
   ],
   controllers: [ApiGatewayController],
   providers: [
