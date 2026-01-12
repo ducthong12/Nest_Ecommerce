@@ -6,23 +6,44 @@ import "google/protobuf/empty.proto";
 
 service ProductService {
   rpc CreateProduct (CreateProductRequest) returns (ProductResponse);
+  rpc CreateManyProduct (CreateManyProductRequest) returns (ManyProductResponse);
+  rpc UpdateProduct (UpdateProductRequest) returns (ProductResponse);
   rpc FindAllProducts (FindProductRequest) returns (ProductListResponse);
-  rpc FindOneProduct (FindOneRequest) returns (ProductResponse);
+  rpc FindOneProduct (FindOneRequest) returns (FindOneResponse);
   rpc CreateCategory (CreateCategoryRequest) returns (CategoryResponse);
   rpc CreateBrand (CreateBrandRequest) returns (BrandResponse);
 }
 
 message CreateProductRequest {
   string name = 1;
-  string description = 2;
-  double price = 3;     // float/number
-  string sku = 4;
-  optional string image_url = 5;
-  optional bool is_active = 6;
-  int32 user_id = 7;    // ID từ Postgres
-  string brand = 8;     // ObjectId string
-  string category = 9;  // ObjectId string
-  repeated SpecificationItem specifications = 10;
+  optional string description = 2;
+  optional string thumbnail_url = 3;
+  optional bool is_active = 4;
+
+  int32 user_id = 5;        
+  string brand = 6;         
+  string category = 7;      
+
+  repeated ProductVariant variants = 8;
+  repeated SpecificationItem specifications = 9;
+}
+
+message CreateManyProductRequest {
+  repeated CreateProductRequest products = 1;
+}
+
+message UpdateProductRequest {
+  int32 id = 1;
+  optional string name = 2;
+  optional string description = 3;
+  optional string thumbnail_url = 4;
+  optional bool is_active = 5;
+       
+  optional string brand = 6;         
+  optional string category = 7;      
+
+  repeated ProductVariant variants = 8;
+  repeated SpecificationItem specifications = 9;
 }
 
 message FindProductRequest {
@@ -37,17 +58,20 @@ message FindOneRequest {
   string id = 1;
 }
 
+message FindOneResponse {
+  ProductResponse product = 1;
+}
+
 message ProductResponse {
-  string id = 1;        // Map từ _id của Mongo
+  string id = 1;       
   string name = 2;
   string description = 3;
   double price = 4;
   string sku = 5;
-  string image_url = 6;
+  string thumbnail_url = 6;
   bool is_active = 7;
   int32 user_id = 8;
   
-  // Quan hệ (Populate) trả về Object hoặc String tùy logic
   string brand_name = 9;   
   string category_name = 10;
   
@@ -55,11 +79,16 @@ message ProductResponse {
   int32 likes_count = 12;
   string created_at = 13;
   repeated SpecificationItem specifications = 14;
+  repeated ProductVariant variants = 15;
+}
+
+message ManyProductResponse {
+  repeated ProductResponse products = 1;
 }
 
 message ProductListResponse {
-  repeated ProductResponse products = 1; // Mảng sản phẩm
-  Meta meta = 2; // Phân trang
+  repeated ProductResponse products = 1;
+  Meta meta = 2;
 }
 
 message Meta {
@@ -86,8 +115,21 @@ message BrandResponse {
   optional string description = 2;
 }
 
+message ProductVariant {
+  string sku = 1;
+  double price = 2;
+  optional string image_url = 3;
+  repeated VariantAttribute attributes = 4;
+  int32 stock_snapshot = 5;
+  double original_price = 6;
+}
+
+message VariantAttribute {
+  string k = 1;
+  string v = 2;
+}
+
 message SpecificationItem {
-  string k = 1; // Key
-  string v = 2; // Value
-  optional string u = 3; // Unit (Optional vì có dấu ?)
+  string key = 1;
+  string value = 2;
 }

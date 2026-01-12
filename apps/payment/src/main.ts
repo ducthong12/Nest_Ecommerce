@@ -1,10 +1,16 @@
-import { NestFactory } from '@nestjs/core';
+import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { PaymentModule } from './payment.module';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { Partitioners } from 'kafkajs';
+import { WinstonModule } from 'nest-winston';
+import { createLoggerConfig } from 'common/logger/winston.config';
+import { LoggingInterceptor } from 'common/interceptor/logging.interceptor';
+import { AllExceptionsFilter } from 'common/filters/all-exceptions.filter';
 
 async function bootstrap() {
-  const app = await NestFactory.create(PaymentModule);
+  const app = await NestFactory.create(PaymentModule, {
+    logger: WinstonModule.createLogger(createLoggerConfig('payment-service')),
+  });
 
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.KAFKA,
@@ -23,8 +29,11 @@ async function bootstrap() {
     },
   });
 
-  await app.startAllMicroservices();
+  const httpAdapter = app.get(HttpAdapterHost);
+  app.useGlobalInterceptors(new LoggingInterceptor());
+  app.useGlobalFilters(new AllExceptionsFilter(httpAdapter));
 
+  await app.startAllMicroservices();
   await app.listen(4444);
 }
 

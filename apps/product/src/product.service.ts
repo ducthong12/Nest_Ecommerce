@@ -1,33 +1,137 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Product, ProductDocument } from '../schemas/product.schema';
-import { Model, Types } from 'mongoose';
-import { CreateProductDto } from 'common/dto/product/create-product.dto';
+import { Connection, Model, ObjectId, Types } from 'mongoose';
+import {
+  CreateProductDto,
+  CreateProductVariantDto,
+} from 'common/dto/product/create-product.dto';
 import { FilterProductDto } from 'common/dto/product/filter-product.dto';
 import { Category } from '../schemas/category.schema';
 import { CreateBrandDto } from 'common/dto/product/create-brand.dto';
 import { Brand } from '../schemas/brand.schema';
 import { CreateCategoryDto } from 'common/dto/product/create-category.dto';
+import { ClientKafka } from '@nestjs/microservices';
+import { UpdateProductDto } from 'common/dto/product/update-product.dto';
+import {
+  bufferCount,
+  bufferTime,
+  filter,
+  merge,
+  Subject,
+  Subscription,
+} from 'rxjs';
+import { UpdateSnapShotProductDto } from 'common/dto/product/updateSnapshot-product.dto';
 
 @Injectable()
 export class ProductService {
+  private logSubject = new Subject<any>();
+  private subscription: Subscription;
   constructor(
     @InjectModel(Product.name) private productModel: Model<ProductDocument>,
     @InjectModel(Category.name) private categoryModel: Model<Category>,
     @InjectModel(Brand.name) private brandModel: Model<Brand>,
+    @Inject('PRODUCT_KAFKA_CLIENT') private readonly kafkaClient: ClientKafka,
+    @InjectConnection() private readonly connection: Connection,
   ) {}
 
-  // 1. Tạo mới
+  onModuleInit() {
+    // Use debounceTime to wait for events to stop arriving, then process
+    // OR use bufferCount to trigger on X items, whichever comes first
+    this.subscription = merge(
+      this.logSubject.pipe(bufferTime(500)),
+      this.logSubject.pipe(bufferCount(100)),
+    )
+      .pipe(
+        filter((events) => {
+          return events.length > 0; // Only process non-empty buffers
+        }),
+      )
+      .subscribe(async (batchEvents: UpdateSnapShotProductDto[]) => {
+        await this.processBatch(batchEvents);
+      });
+  }
+
+  onModuleDestroy() {
+    this.subscription.unsubscribe();
+  }
+
+  async addToBuffer(message: UpdateSnapShotProductDto) {
+    this.logSubject.next(message);
+  }
+
   async create(createProductDto: CreateProductDto): Promise<Product> {
+    const { minPrice, maxPrice } = this.calculateMinMaxPrice(
+      createProductDto.variants,
+    );
+
     const newProduct = new this.productModel({
       ...createProductDto,
+      minPrice: minPrice,
+      maxPrice: maxPrice,
+      soldCount: 0,
+      rating: 0.0,
+      likesCount: 0,
+      viewCount: 0,
       brand: new Types.ObjectId(createProductDto.brand),
       category: new Types.ObjectId(createProductDto.category),
     });
-    return newProduct.save();
+
+    const savedProduct = await newProduct.save();
+    const { brand_name, category_name } = await this.getBrandProductNameById(
+      createProductDto.brand,
+      createProductDto.category,
+    );
+
+    const kafkaPayload = this.prepareKafkaPayloadCreate(
+      savedProduct._id.toString(),
+      { ...savedProduct.toObject(), brand_name, category_name },
+    );
+
+    this.kafkaClient.emit('search.create_product', kafkaPayload);
+
+    return savedProduct;
   }
 
-  // 2. Lấy danh sách (Có phân trang, search, sort, populate tối ưu)
+  async createMany({
+    products,
+  }: {
+    products: CreateProductDto[];
+  }): Promise<{ products: Product[] }> {
+    const data = products.map((dto) => {
+      const { minPrice, maxPrice } = this.calculateMinMaxPrice(dto.variants);
+      return {
+        ...dto,
+        minPrice: minPrice,
+        maxPrice: maxPrice,
+        soldCount: 0,
+        rating: 0.0,
+        likesCount: 0,
+        viewCount: 0,
+        brand: new Types.ObjectId(dto.brand),
+        category: new Types.ObjectId(dto.category),
+      };
+    });
+
+    const newProductArr = await this.productModel.insertMany(data);
+
+    for (const savedProduct of newProductArr) {
+      const { brand_name, category_name } = await this.getBrandProductNameById(
+        savedProduct.brand.toString(),
+        savedProduct.category.toString(),
+      );
+
+      const kafkaPayload = this.prepareKafkaPayloadCreate(
+        savedProduct._id.toString(),
+        { ...savedProduct.toObject(), brand_name, category_name },
+      );
+
+      this.kafkaClient.emit('search.create_product', kafkaPayload);
+    }
+
+    return { products: newProductArr as unknown as Product[] };
+  }
+
   async findAll(query: FilterProductDto) {
     const { search, page = 1, limit = 10, sort, categoryId } = query;
     const skip = (page - 1) * limit;
@@ -54,13 +158,13 @@ export class ProductService {
     const [products, total] = await Promise.all([
       this.productModel
         .find(filter)
-        .select('-__v -updatedAt') // OPTIMIZE: Bỏ các trường không cần thiết
-        .populate('brand', 'name logo') // OPTIMIZE: Chỉ lấy name và logo của Brand
-        .populate('category', 'name') // OPTIMIZE: Chỉ lấy name của Category
+        .select('-__v -updatedAt')
+        .populate('brand', 'name logo')
+        .populate('category', 'name')
         .sort(sortOption)
         .skip(skip)
         .limit(limit)
-        .lean(), // OPTIMIZE: Quan trọng nhất để tăng tốc độ đọc
+        .lean(),
 
       this.productModel.countDocuments(filter),
     ]);
@@ -75,41 +179,66 @@ export class ProductService {
     };
   }
 
-  // 3. Lấy chi tiết (Tự động tăng viewCount)
   async findOne(id: string): Promise<Product> {
     if (!Types.ObjectId.isValid(id))
       throw new NotFoundException('ID không hợp lệ');
 
-    // Dùng findOneAndUpdate để vừa lấy data vừa tăng view (Atomic Update)
     const product = await this.productModel
-      .findByIdAndUpdate(
-        id,
-        { $inc: { viewCount: 1 } }, // Tăng view nguyên tử, an toàn hơn fetch -> save
-        { new: true }, // Trả về data mới sau khi update
-      )
-      .populate('brand', 'name description logo')
-      .populate('category', 'name slug')
+      .findByIdAndUpdate(id, { $inc: { viewCount: 1 } }, { new: true })
+      //.populate('brand', 'name description logo')
+      //.populate('category', 'name slug')
+      .select('-__v')
       .lean();
 
     if (!product) throw new NotFoundException('Không tìm thấy sản phẩm');
 
-    return product as Product;
+    return product;
   }
 
-  // 4. Update thông tin
-  async update(
-    id: string,
-    updateData: Partial<CreateProductDto>,
-  ): Promise<Product> {
+  async update(id: string, updateData: UpdateProductDto): Promise<Product> {
     const updatedProduct = await this.productModel
       .findByIdAndUpdate(id, updateData, { new: true })
       .lean();
 
-    if (!updatedProduct) throw new NotFoundException('Không tìm thấy sản phẩm');
+    if (!updatedProduct) throw new NotFoundException('Not found product');
+
+    const kafkaPayload = this.prepareKafkaPayloadUpdate(
+      id.toString(),
+      updateData,
+    );
+
+    this.kafkaClient.emit('search.update_product', kafkaPayload);
+
     return updatedProduct as Product;
   }
 
-  // 5. Create category
+  async updateMany(updateDataMany: Array<UpdateProductDto>): Promise<boolean> {
+    const updatedProductArr = await this.productModel
+      .updateMany(
+        {
+          _id: {
+            $in: updateDataMany.map((data) => new Types.ObjectId(data.id)),
+          },
+        },
+        { $set: updateDataMany },
+      )
+      .lean();
+
+    if (!updatedProductArr)
+      throw new NotFoundException('Not found array product');
+
+    for (const data of updateDataMany) {
+      const kafkaPayload = this.prepareKafkaPayloadUpdate(
+        data.id.toString(),
+        data,
+      );
+
+      this.kafkaClient.emit('search.update_product', kafkaPayload);
+    }
+
+    return true;
+  }
+
   async createCategory(
     createCategoryDto: CreateCategoryDto,
   ): Promise<Category> {
@@ -117,9 +246,145 @@ export class ProductService {
     return newCategory.save();
   }
 
-  // 6. Create brand
   async createBrand(createBrandDto: CreateBrandDto): Promise<Brand> {
     const newBrand = await this.brandModel.create(createBrandDto);
     return newBrand.save();
   }
+
+  private calculateStockChanges(
+    data: UpdateSnapShotProductDto[],
+  ): Record<string, number> {
+    return data.reduce(
+      (acc, log) => {
+        const key = log.sku;
+        if (!acc[key]) acc[key] = 0;
+
+        if (log.type === 'OUTBOUND') {
+          acc[key] -= log.quantity;
+        } else {
+          acc[key] += log.quantity;
+        }
+
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+  }
+
+  private async processBatch(events: UpdateSnapShotProductDto[]) {
+    const stockChanges = this.calculateStockChanges(events);
+
+    const session = await this.connection.startSession();
+
+    session.startTransaction();
+
+    try {
+      for (const [sku, changeAmount] of Object.entries(stockChanges)) {
+        await this.productModel.updateOne(
+          { 'variants.sku': sku },
+          { $inc: { 'variants.$.stockSnapshot': changeAmount } },
+          { session },
+        );
+      }
+
+      await session.commitTransaction();
+    } catch (error) {
+      await session.abortTransaction();
+    } finally {
+      session.endSession();
+    }
+  }
+
+  private calculateMinMaxPrice(variants: CreateProductVariantDto[]) {
+    const prices = variants.map((v) => v.price);
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+
+    return { minPrice, maxPrice };
+  }
+
+  private getBrandProductNameById = async (
+    brandId?: string,
+    categoryId?: string,
+  ) => {
+    let brand = undefined,
+      category = undefined;
+
+    if (brandId) brand = await this.brandModel.findById(brandId).lean();
+    if (categoryId)
+      category = await this.categoryModel.findById(categoryId).lean();
+
+    return {
+      brand_name: brand?.name || '',
+      category_name: category?.name || '',
+    };
+  };
+
+  private prepareKafkaPayloadCreate = (
+    id: string,
+    product: Product & {
+      brand_name: string;
+      category_name: string;
+      createdAt: Date;
+    },
+  ) => {
+    const variantFormat = product.variants.map((v) => ({
+      sku: v.sku,
+      price: v.price,
+      imageUrl: v.imageUrl,
+      originalPrice: v.originalPrice,
+      statusStock: v.stockSnapshot > 0 ? 'IN_STOCK' : 'OUT_OF_STOCK',
+      attributes: v.attributes.map((attr) => ({
+        k: attr.k,
+        v: attr.v,
+      })),
+    }));
+
+    const allVariantValues = product.variants.flatMap((v) =>
+      v.attributes.map((a) => a.v),
+    );
+
+    const uniqueAttributes = [...new Set(allVariantValues)];
+
+    const kafkaPayload = {
+      id: id,
+      name: product.name,
+      description: product.description,
+      thumbnailUrl: product.thumbnailUrl,
+      minPrice: product.minPrice,
+      maxPrice: product.maxPrice,
+      brandId: product.brand.toString(),
+      categoryId: product.category.toString(),
+      brandName: product.brand_name,
+      categoryName: product.category_name,
+      variants: variantFormat,
+      specifications: product.specifications,
+      created_at: product.createdAt.toISOString(),
+      isActive: product.isActive,
+      likesCount: product.likesCount,
+      viewCount: product.viewCount,
+      rating: product.rating,
+      soldCount: product.soldCount,
+      search_attributes: uniqueAttributes,
+    };
+
+    return kafkaPayload;
+  };
+
+  private prepareKafkaPayloadUpdate = (
+    id: string,
+    product: UpdateProductDto,
+  ) => {
+    const kafkaPayload = {
+      ...product,
+      id: id.toString(),
+    };
+
+    if (product.brand) kafkaPayload['brandId'] = product.brand.toString();
+
+    if (product.category)
+      kafkaPayload['categoryId'] = product.category.toString();
+
+    return kafkaPayload;
+  };
 }

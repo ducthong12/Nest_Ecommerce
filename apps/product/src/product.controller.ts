@@ -1,10 +1,12 @@
 import { Controller } from '@nestjs/common';
-import { GrpcMethod } from '@nestjs/microservices';
+import { EventPattern, GrpcMethod } from '@nestjs/microservices';
 import { ProductService } from './product.service';
 import { CreateProductDto } from 'common/dto/product/create-product.dto';
 import { FilterProductDto } from 'common/dto/product/filter-product.dto';
 import { CreateCategoryDto } from 'common/dto/product/create-category.dto';
 import { CreateBrandDto } from 'common/dto/product/create-brand.dto';
+import { UpdateProductDto } from 'common/dto/product/update-product.dto';
+import { UpdateSnapShotProductDto } from 'common/dto/product/updateSnapshot-product.dto';
 
 @Controller()
 export class ProductController {
@@ -13,6 +15,24 @@ export class ProductController {
   @GrpcMethod('ProductService', 'CreateProduct')
   async createProduct(data: CreateProductDto) {
     const result = await this.productService.create(data);
+    return this.mapToProto(result);
+  }
+
+  @GrpcMethod('ProductService', 'CreateManyProduct')
+  async createManyProduct({ products }: { products: CreateProductDto[] }) {
+    const result = await this.productService.createMany({ products });
+    return result;
+  }
+
+  @GrpcMethod('ProductService', 'UpdateProduct')
+  async updateProduct(data: UpdateProductDto) {
+    const result = await this.productService.update(data.id, data);
+    return this.mapToProto(result);
+  }
+
+  @GrpcMethod('ProductService', 'UpdateManyProduct')
+  async updateManyProduct(data: UpdateProductDto[]) {
+    const result = await this.productService.updateMany(data);
     return this.mapToProto(result);
   }
 
@@ -28,7 +48,9 @@ export class ProductController {
   @GrpcMethod('ProductService', 'FindOneProduct')
   async findOneProduct(data: { id: string }) {
     const result = await this.productService.findOne(data.id);
-    return this.mapToProto(result);
+    return {
+      product: this.mapToProto(result),
+    };
   }
 
   @GrpcMethod('ProductService', 'CreateCategory')
@@ -43,14 +65,20 @@ export class ProductController {
     return result;
   }
 
-  // Helper function để map Mongo Document -> Proto Message
-  // Vì Mongo dùng _id (Object), Proto dùng id (String) và snake_case
+  @EventPattern('product.restock')
+  async restockProduct(data: UpdateSnapShotProductDto) {
+    return await this.productService.addToBuffer({ ...data, type: 'INBOUND' });
+  }
+
+  @EventPattern('product.reserve')
+  async reserveProduct(data: UpdateSnapShotProductDto) {
+    return await this.productService.addToBuffer({ ...data, type: 'OUTBOUND' });
+  }
+
   private mapToProto(product: any) {
     return {
       ...product,
       id: product._id.toString(),
-      brand_name: product.brand?.name || '',
-      category_name: product.category?.name || '',
       created_at: product.createdAt ? product.createdAt.toISOString() : '',
     };
   }

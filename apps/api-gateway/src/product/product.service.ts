@@ -7,6 +7,7 @@ import { CreateCategoryDto } from 'common/dto/product/create-category.dto';
 import { CreateProductDto } from 'common/dto/product/create-product.dto';
 import { MicroserviceErrorHandler } from '../common/microservice-error.handler';
 import { catchError, firstValueFrom, throwError, timeout } from 'rxjs';
+import { UpdateProductDto } from 'common/dto/product/update-product.dto';
 
 @Injectable()
 export class ProductService {
@@ -39,6 +40,25 @@ export class ProductService {
     }
   }
 
+  async createManyProduct(createManyProductDto: CreateProductDto[]) {
+    try {
+      return await firstValueFrom(
+        this.productService
+          .createManyProduct({ products: createManyProductDto })
+          .pipe(
+            timeout(10000),
+            catchError((error) => throwError(() => error)),
+          ),
+      );
+    } catch (error) {
+      MicroserviceErrorHandler.handleError(
+        error,
+        `create many product: ${JSON.stringify(createManyProductDto)}`,
+        'Product Service',
+      );
+    }
+  }
+
   async findAllProducts() {
     try {
       return await firstValueFrom(
@@ -56,7 +76,7 @@ export class ProductService {
     }
   }
 
-  async findOneProduct(id: number) {
+  async findOneProduct(id: string) {
     try {
       return await firstValueFrom(
         this.productService.findOneProduct({ id }).pipe(
@@ -107,9 +127,22 @@ export class ProductService {
     }
   }
 
-  // updateProduct(id: number, updateProductDto: UpdateProductDto) {
-  //   return this.productService.updateProduct({ id, ...updateProductDto });
-  // }
+  async updateProduct(id: string, updateProductDto: UpdateProductDto) {
+    try {
+      return await firstValueFrom(
+        this.productService.updateProduct({ id, ...updateProductDto }).pipe(
+          timeout(10000),
+          catchError((error) => throwError(() => error)),
+        ),
+      );
+    } catch (error) {
+      MicroserviceErrorHandler.handleError(
+        error,
+        `updateProduct`,
+        'Product Service',
+      );
+    }
+  }
 
   // removeProduct(id: number) {
   //   return this.productService.removeProduct({ id });

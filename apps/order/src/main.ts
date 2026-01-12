@@ -1,12 +1,18 @@
-import { NestFactory } from '@nestjs/core';
+import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { OrderModule } from './order.module';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { join } from 'path';
 import { NAME_SERVICE_GRPC } from '@common/constants/port-grpc.constant';
 import { Partitioners } from 'kafkajs';
+import { createLoggerConfig } from 'common/logger/winston.config';
+import { WinstonModule } from 'nest-winston';
+import { LoggingInterceptor } from 'common/interceptor/logging.interceptor';
+import { AllExceptionsFilter } from 'common/filters/all-exceptions.filter';
 
 async function bootstrap() {
-  const app = await NestFactory.create(OrderModule);
+  const app = await NestFactory.create(OrderModule, {
+    logger: WinstonModule.createLogger(createLoggerConfig('order-service')),
+  });
 
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.GRPC,
@@ -34,8 +40,11 @@ async function bootstrap() {
     },
   });
 
-  await app.startAllMicroservices();
+  const httpAdapter = app.get(HttpAdapterHost);
+  app.useGlobalInterceptors(new LoggingInterceptor());
+  app.useGlobalFilters(new AllExceptionsFilter(httpAdapter));
 
+  await app.startAllMicroservices();
   await app.listen(6666);
 }
 

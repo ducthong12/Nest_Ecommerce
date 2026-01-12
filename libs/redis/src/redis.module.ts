@@ -9,7 +9,7 @@ import Redis from 'ioredis';
       provide: 'REDIS_CLIENT',
       async useFactory() {
         this.redisClient = new Redis({
-          host: '107.23.22.237', //process.env.REDIS_HOST || 'localhost',
+          host: '127.0.0.1', //process.env.REDIS_HOST || 'localhost',
           port: 6379,
           username: 'default', //process.env.REDIS_USERNAME || 'default',
           password: '12345678', //process.env.REDIS_PASSWORD,
