@@ -29,17 +29,32 @@ export class SearchService {
       body: {
         settings: {
           analysis: {
+            filter: {
+              my_synonym_filter: {
+                type: 'synonym_graph',
+                synonyms: [
+                  'promax, pro max',
+                  'wifi, wi fi',
+                  'airpod, air pod',
+                  'smart watch, smartwatch',
+                  '4g, fourth generation',
+                  '5g, fifth generation',
+                  'cellphone, mobile phone, smartphone',
+                  'notebook, laptop',
+                  'tv, television',
+                ],
+              },
+            },
             analyzer: {
               product_analyzer: {
-                tokenizer: 'whitespace',
-                filter: ['lowercase', 'word_delimiter_graph', 'asciifolding'],
+                tokenizer: 'standard',
+                filter: ['lowercase', 'my_synonym_filter', 'asciifolding'],
               },
             },
           },
         },
         mappings: {
           properties: {
-            // Trường tổng hợp để search "bất chấp" từ khóa nằm ở đâu
             all_text: {
               type: 'text',
               analyzer: 'product_analyzer',
@@ -47,14 +62,14 @@ export class SearchService {
             name: {
               type: 'text',
               analyzer: 'product_analyzer',
-              copy_to: 'all_text', // <--- Gom vào all_text
+              copy_to: 'all_text',
             },
             brandName: {
               type: 'text',
               analyzer: 'product_analyzer',
-              copy_to: 'all_text', // <--- Gom vào all_text
+              copy_to: 'all_text',
               fields: {
-                keyword: { type: 'keyword' }, // Vẫn giữ bản keyword để dùng cho Filter/Sort nếu cần
+                keyword: { type: 'keyword' },
               },
             },
             categoryName: {
@@ -62,17 +77,19 @@ export class SearchService {
               analyzer: 'product_analyzer',
               copy_to: 'all_text',
             },
+            search_attributes: {
+              type: 'text',
+              analyzer: 'product_analyzer',
+              copy_to: 'all_text',
+            },
             variants: {
               type: 'object',
               properties: {
+                sku: { type: 'keyword' },
                 attributes: {
                   properties: {
                     k: { type: 'keyword' },
-                    v: {
-                      type: 'text',
-                      analyzer: 'product_analyzer',
-                      copy_to: 'all_text', // <--- Gom màu sắc, dung lượng vào all_text
-                    },
+                    v: { type: 'text' },
                   },
                 },
               },
@@ -193,7 +210,6 @@ export class SearchService {
           ],
           should: [
             {
-              // TĂNG ĐIỂM (BOOST): Nếu khớp chính xác cụm từ thì đưa lên đầu
               match_phrase: {
                 name: {
                   query: query.valueSearch,

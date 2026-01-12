@@ -328,6 +328,24 @@ export class ProductService {
       createdAt: Date;
     },
   ) => {
+    const variantFormat = product.variants.map((v) => ({
+      sku: v.sku,
+      price: v.price,
+      imageUrl: v.imageUrl,
+      originalPrice: v.originalPrice,
+      statusStock: v.stockSnapshot > 0 ? 'IN_STOCK' : 'OUT_OF_STOCK',
+      attributes: v.attributes.map((attr) => ({
+        k: attr.k,
+        v: attr.v,
+      })),
+    }));
+
+    const allVariantValues = product.variants.flatMap((v) =>
+      v.attributes.map((a) => a.v),
+    );
+
+    const uniqueAttributes = [...new Set(allVariantValues)];
+
     const kafkaPayload = {
       id: id,
       name: product.name,
@@ -339,17 +357,7 @@ export class ProductService {
       categoryId: product.category.toString(),
       brandName: product.brand_name,
       categoryName: product.category_name,
-      variants: product.variants.map((v) => ({
-        sku: v.sku,
-        price: v.price,
-        imageUrl: v.imageUrl,
-        originalPrice: v.originalPrice,
-        stockSnapshot: v.stockSnapshot,
-        attributes: v.attributes.map((attr) => ({
-          k: attr.k,
-          v: attr.v,
-        })),
-      })),
+      variants: variantFormat,
       specifications: product.specifications,
       created_at: product.createdAt.toISOString(),
       isActive: product.isActive,
@@ -357,6 +365,7 @@ export class ProductService {
       viewCount: product.viewCount,
       rating: product.rating,
       soldCount: product.soldCount,
+      search_attributes: uniqueAttributes,
     };
 
     return kafkaPayload;
