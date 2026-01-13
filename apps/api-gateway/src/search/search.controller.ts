@@ -10,4 +10,9 @@ export class SearchController {
   async searchProducts(@Query() query: SearchProductsDto) {
     return await this.searchService.searchProducts(query);
   }
+
+  @Get('productsInventory')
+  async searchProductsInventory(@Query() query: SearchProductsDto) {
+    return await this.searchService.searchProductsInventory(query);
+  }
 }

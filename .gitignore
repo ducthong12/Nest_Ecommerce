@@ -58,4 +58,13 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 package-lock.json
 /keys
 
-/redis_data
+# --- Database & Docker ---
+# Chặn mọi thư mục tên redis_data ở bất cứ đâu
+**/redis_data/
+# Chặn các file dump của redis
+**/*.rdb
+**/*.aof
+
+# --- Prisma ---
+# Chặn folder migrations ở bất cứ đâu (Cân nhắc kỹ vụ chặn migration này nhé)
+**/prisma/migrations/

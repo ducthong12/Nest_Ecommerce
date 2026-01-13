@@ -4,6 +4,7 @@ package search;
 
 service SearchService {
   rpc HandleProductSearch (SearchProductRequest) returns (SearchProductResponse);
+  rpc HandleProductSearchInventory (SearchProductRequest) returns (SearchProductResponse);
 }
 
 message Empty {}

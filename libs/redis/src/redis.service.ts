@@ -1,14 +1,14 @@
-import {
-  Injectable,
-  OnModuleInit,
-  OnModuleDestroy,
-  Inject,
-} from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import Redis from 'ioredis';
 
 export interface ReserveResult {
   success: boolean;
   failedProductIds: string[]; // Danh sách ID bị hết hàng
+}
+
+export interface InventoryRedis {
+  sku: string;
+  quantity: number;
 }
 
 @Injectable()
@@ -65,14 +65,12 @@ export class RedisService {
 
   constructor(@Inject('REDIS_CLIENT') private readonly redisClient: Redis) {}
 
-  async reserveAtomic(
-    items: { productId: string; quantity: number }[],
-  ): Promise<ReserveResult> {
+  async reserveAtomic(items: InventoryRedis[]): Promise<ReserveResult> {
     if (items.length === 0) return { success: true, failedProductIds: [] };
 
     const args = [];
     for (const item of items) {
-      args.push(`inventory:product:${item.productId}`);
+      args.push(`inventory:product:${item.sku}`);
       args.push(item.quantity);
     }
 
@@ -101,14 +99,12 @@ export class RedisService {
     }
   }
 
-  async releaseAtomic(
-    items: { productId: string; quantity: number }[],
-  ): Promise<void> {
+  async releaseAtomic(items: InventoryRedis[]): Promise<void> {
     if (items.length === 0) return;
 
     const args = [];
     for (const item of items) {
-      args.push(`inventory:product:${item.productId}`);
+      args.push(`inventory:product:${item.sku}`);
       args.push(item.quantity);
     }
 
@@ -119,10 +115,7 @@ export class RedisService {
     }
   }
 
-  async addStockAtomic(items: {
-    productId: string;
-    quantity: number;
-  }): Promise<void> {
+  async addStockAtomic(items: InventoryRedis): Promise<void> {
     if (!items) return;
 
     if (!this.redisClient) {
@@ -130,7 +123,7 @@ export class RedisService {
     }
 
     const args = [];
-    args.push(`inventory:product:${items.productId}`);
+    args.push(`inventory:product:${items.sku}`);
     args.push(items.quantity);
 
     try {

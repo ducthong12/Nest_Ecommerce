@@ -4,7 +4,7 @@ import { Product, ProductDocument } from '../schemas/product.schema';
 import { Connection, Model, ObjectId, Types } from 'mongoose';
 import {
   CreateProductDto,
-  CreateProductVariantDto,
+  ProductVariantDto,
 } from 'common/dto/product/create-product.dto';
 import { FilterProductDto } from 'common/dto/product/filter-product.dto';
 import { Category } from '../schemas/category.schema';
@@ -22,6 +22,16 @@ import {
   Subscription,
 } from 'rxjs';
 import { UpdateSnapShotProductDto } from 'common/dto/product/updateSnapshot-product.dto';
+import { UpdatePriceDto } from 'common/dto/product/update-price.dto';
+
+interface KafkaProductPayload extends Omit<Product, 'variants'> {
+  brand_name: string;
+  category_name: string;
+  createdAt: Date;
+  variants: ProductVariantDto[];
+}
+
+interface KafkaProductVariantPayload extends ProductVariantDto {}
 
 @Injectable()
 export class ProductService {
@@ -36,15 +46,13 @@ export class ProductService {
   ) {}
 
   onModuleInit() {
-    // Use debounceTime to wait for events to stop arriving, then process
-    // OR use bufferCount to trigger on X items, whichever comes first
     this.subscription = merge(
       this.logSubject.pipe(bufferTime(500)),
       this.logSubject.pipe(bufferCount(100)),
     )
       .pipe(
         filter((events) => {
-          return events.length > 0; // Only process non-empty buffers
+          return events.length > 0;
         }),
       )
       .subscribe(async (batchEvents: UpdateSnapShotProductDto[]) => {
@@ -202,9 +210,36 @@ export class ProductService {
 
     if (!updatedProduct) throw new NotFoundException('Not found product');
 
+    const kafkaPayload = this.prepareKafkaPayloadUpdate(id.toString(), {
+      ...updateData,
+    } as unknown as Omit<Partial<KafkaProductPayload>, 'id'>);
+
+    this.kafkaClient.emit('search.update_product', kafkaPayload);
+
+    return updatedProduct as Product;
+  }
+
+  async updatePrice(updateData: UpdatePriceDto): Promise<Product> {
+    const updatedProduct = await this.productModel
+      .findOneAndUpdate(
+        { 'variants.sku': updateData.sku },
+        { 'variants.$.price': updateData.price },
+      )
+      .lean();
+
+    if (!updatedProduct) throw new NotFoundException('Not found product');
+
+    const { minPrice, maxPrice } = this.calculateMinMaxPrice(
+      updatedProduct.variants,
+    );
+
     const kafkaPayload = this.prepareKafkaPayloadUpdate(
-      id.toString(),
-      updateData,
+      updateData.productId.toString(),
+      {
+        variants: updatedProduct.variants,
+        minPrice,
+        maxPrice,
+      },
     );
 
     this.kafkaClient.emit('search.update_product', kafkaPayload);
@@ -230,7 +265,10 @@ export class ProductService {
     for (const data of updateDataMany) {
       const kafkaPayload = this.prepareKafkaPayloadUpdate(
         data.id.toString(),
-        data,
+        updatedProductArr as unknown as Omit<
+          Partial<KafkaProductPayload>,
+          'id'
+        >,
       );
 
       this.kafkaClient.emit('search.update_product', kafkaPayload);
@@ -273,6 +311,7 @@ export class ProductService {
 
   private async processBatch(events: UpdateSnapShotProductDto[]) {
     const stockChanges = this.calculateStockChanges(events);
+    const result = [];
 
     const session = await this.connection.startSession();
 
@@ -280,22 +319,37 @@ export class ProductService {
 
     try {
       for (const [sku, changeAmount] of Object.entries(stockChanges)) {
-        await this.productModel.updateOne(
+        const data = await this.productModel.findOneAndUpdate(
           { 'variants.sku': sku },
           { $inc: { 'variants.$.stockSnapshot': changeAmount } },
           { session },
         );
+
+        result.push(data);
       }
 
       await session.commitTransaction();
     } catch (error) {
       await session.abortTransaction();
+      await session.endSession();
+      throw error;
     } finally {
-      session.endSession();
+      await session.endSession();
+    }
+
+    for (const updatedProduct of result) {
+      const kafkaPayload = this.prepareKafkaPayloadUpdate(
+        updatedProduct.id.toString(),
+        {
+          variants: updatedProduct.variants,
+        },
+      );
+
+      this.kafkaClient.emit('search.update_product', kafkaPayload);
     }
   }
 
-  private calculateMinMaxPrice(variants: CreateProductVariantDto[]) {
+  private calculateMinMaxPrice(variants: ProductVariantDto[]) {
     const prices = variants.map((v) => v.price);
     const minPrice = Math.min(...prices);
     const maxPrice = Math.max(...prices);
@@ -322,23 +376,9 @@ export class ProductService {
 
   private prepareKafkaPayloadCreate = (
     id: string,
-    product: Product & {
-      brand_name: string;
-      category_name: string;
-      createdAt: Date;
-    },
+    product: KafkaProductPayload,
   ) => {
-    const variantFormat = product.variants.map((v) => ({
-      sku: v.sku,
-      price: v.price,
-      imageUrl: v.imageUrl,
-      originalPrice: v.originalPrice,
-      statusStock: v.stockSnapshot > 0 ? 'IN_STOCK' : 'OUT_OF_STOCK',
-      attributes: v.attributes.map((attr) => ({
-        k: attr.k,
-        v: attr.v,
-      })),
-    }));
+    const variantFormat = this.formatVariants(product.variants);
 
     const allVariantValues = product.variants.flatMap((v) =>
       v.attributes.map((a) => a.v),
@@ -373,10 +413,13 @@ export class ProductService {
 
   private prepareKafkaPayloadUpdate = (
     id: string,
-    product: UpdateProductDto,
+    product: Omit<Partial<KafkaProductPayload>, 'id'>,
   ) => {
     const kafkaPayload = {
       ...product,
+      variants: product.variants
+        ? this.formatVariants(product.variants)
+        : undefined,
       id: id.toString(),
     };
 
@@ -386,5 +429,19 @@ export class ProductService {
       kafkaPayload['categoryId'] = product.category.toString();
 
     return kafkaPayload;
+  };
+
+  private formatVariants = (variants: KafkaProductVariantPayload[]) => {
+    return variants.map((v) => ({
+      sku: v.sku,
+      price: v.price,
+      imageUrl: v.imageUrl,
+      originalPrice: v.originalPrice,
+      statusStock: v.stockSnapshot > 0 ? 'IN_STOCK' : 'OUT_OF_STOCK',
+      attributes: v.attributes.map((attr) => ({
+        k: attr.k,
+        v: attr.v,
+      })),
+    }));
   };
 }

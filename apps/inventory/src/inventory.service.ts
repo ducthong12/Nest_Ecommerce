@@ -31,15 +31,13 @@ export class InventoryService {
   ) {}
 
   onModuleInit() {
-    // Use debounceTime to wait for events to stop arriving, then process
-    // OR use bufferCount to trigger on X items, whichever comes first
     this.subscription = merge(
       this.logSubject.pipe(bufferTime(500)),
       this.logSubject.pipe(bufferCount(100)),
     )
       .pipe(
         filter((events) => {
-          return events.length > 0; // Only process non-empty buffers
+          return events.length > 0;
         }),
       )
       .subscribe(async (batchEvents: InventoryEventDto[]) => {
@@ -56,36 +54,31 @@ export class InventoryService {
   }
 
   private async processBatch(events: InventoryEventDto[]) {
-    // BƯỚC 1: FLATTEN (Làm phẳng dữ liệu)
-    // Biến đổi từ: [ {orderId: 1, items: [A, B]}, {orderId: 2, items: [A]} ]
-    // Thành: [ {id: A, order: 1}, {id: B, order: 1}, {id: A, order: 2} ]
     const flatLogs: FlatInventoryLog[] = events.flatMap((event) =>
       event.items.map((item) => ({
         productId: item.productId,
         quantity: item.quantity,
         type: event.type, // Thừa kế type từ event cha
         orderId: event.orderId,
+        sku: item.sku,
       })),
     );
 
-    // BƯỚC 2: Tính toán Delta (+/-) dựa trên list đã phẳng
     const stockChanges = this.calculateStockChanges(flatLogs);
 
-    // BƯỚC 3: Transaction DB
     const inventoryIds = new Map<string, number>();
     await this.prismaInventory.$transaction(async (tx) => {
-      for (const [productId, changeAmount] of Object.entries(stockChanges)) {
+      for (const [sku, changeAmount] of Object.entries(stockChanges)) {
         const inventory = await tx.inventory.update({
-          where: { productId },
+          where: { sku },
           data: { stockQuantity: { increment: changeAmount } },
         });
-        inventoryIds.set(productId, inventory.id);
+        inventoryIds.set(sku, inventory.id);
       }
 
-      // Insert Log (Dùng flatLogs để insert từng dòng chi tiết)
       await tx.inventoryTransaction.createMany({
         data: flatLogs.map((log) => ({
-          inventoryId: inventoryIds.get(log.productId)!,
+          inventoryId: inventoryIds.get(log.sku)!,
           type: log.type,
           quantity: log.quantity,
         })),
@@ -98,14 +91,12 @@ export class InventoryService {
   ): Record<string, number> {
     return flatLogs.reduce(
       (acc, log) => {
-        const key = log.productId;
+        const key = log.sku;
         if (!acc[key]) acc[key] = 0;
 
-        // Quy ước dấu
         if (log.type === 'OUTBOUND') {
           acc[key] -= log.quantity;
         } else {
-          // RELEASE, RESERVE, INBOUND...
           acc[key] += log.quantity;
         }
 
@@ -128,7 +119,7 @@ export class InventoryService {
     });
 
     await this.redisService.addStockAtomic({
-      productId: data.productId,
+      sku: data.sku,
       quantity: data.quantity,
     });
 

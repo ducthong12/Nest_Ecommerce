@@ -113,10 +113,12 @@ export class SearchService {
   }
 
   async updateProduct(data: any) {
+    const { id: _, ...updateFields } = data;
+
     await this.elasticsearchService.update({
       index: 'products',
       id: data.id,
-      doc: data,
+      doc: updateFields,
     });
   }
 
@@ -139,7 +141,7 @@ export class SearchService {
               match: {
                 all_text: {
                   query: query.valueSearch,
-                  operator: 'and',
+                  //operator: 'and',
                   fuzziness: 'AUTO',
                   prefix_length: 2,
                 },
@@ -221,7 +223,7 @@ export class SearchService {
         },
       };
     } else {
-      searchQuery = { match_all: {} };
+      searchQuery = { bool: { must: [{ term: { isActive: true } }] } };
     }
 
     const result = await this.elasticsearchService.search({

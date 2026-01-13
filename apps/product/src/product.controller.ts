@@ -7,6 +7,7 @@ import { CreateCategoryDto } from 'common/dto/product/create-category.dto';
 import { CreateBrandDto } from 'common/dto/product/create-brand.dto';
 import { UpdateProductDto } from 'common/dto/product/update-product.dto';
 import { UpdateSnapShotProductDto } from 'common/dto/product/updateSnapshot-product.dto';
+import { UpdatePriceDto } from 'common/dto/product/update-price.dto';
 
 @Controller()
 export class ProductController {
@@ -62,6 +63,12 @@ export class ProductController {
   @GrpcMethod('ProductService', 'CreateBrand')
   async createBrand(data: CreateBrandDto) {
     const result = await this.productService.createBrand(data);
+    return result;
+  }
+
+  @GrpcMethod('ProductService', 'UpdatePrice')
+  async updatePrice(data: UpdatePriceDto) {
+    const result = await this.productService.updatePrice(data);
     return result;
   }
 

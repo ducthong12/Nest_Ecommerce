@@ -4,6 +4,7 @@ import { CreateProductDto } from 'common/dto/product/create-product.dto';
 import { CreateCategoryDto } from 'common/dto/product/create-category.dto';
 import { CreateBrandDto } from 'common/dto/product/create-brand.dto';
 import { UpdateProductDto } from 'common/dto/product/update-product.dto';
+import { UpdatePriceDto } from 'common/dto/product/update-price.dto';
 
 @Controller('product')
 export class ProductController {
@@ -26,11 +27,13 @@ export class ProductController {
   }
 
   @Patch('updateProduct')
-  updateProduct(updateProductDto: UpdateProductDto) {
-    return this.productService.updateProduct(
-      updateProductDto.id,
-      updateProductDto,
-    );
+  updateProduct(@Body() update: UpdateProductDto) {
+    return this.productService.updateProduct(update.id, update);
+  }
+
+  @Patch('updatePrice')
+  updatePrice(@Body() updatePriceDto: UpdatePriceDto) {
+    return this.productService.updatePrice(updatePriceDto);
   }
 
   @Post('createBrand')

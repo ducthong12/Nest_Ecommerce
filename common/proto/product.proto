@@ -12,6 +12,7 @@ service ProductService {
   rpc FindOneProduct (FindOneRequest) returns (FindOneResponse);
   rpc CreateCategory (CreateCategoryRequest) returns (CategoryResponse);
   rpc CreateBrand (CreateBrandRequest) returns (BrandResponse);
+  rpc UpdatePrice (UpdatePriceRequest) returns (ProductResponse);
 }
 
 message CreateProductRequest {
@@ -33,7 +34,7 @@ message CreateManyProductRequest {
 }
 
 message UpdateProductRequest {
-  int32 id = 1;
+  string id = 1;
   optional string name = 2;
   optional string description = 3;
   optional string thumbnail_url = 4;
@@ -44,6 +45,12 @@ message UpdateProductRequest {
 
   repeated ProductVariant variants = 8;
   repeated SpecificationItem specifications = 9;
+}
+
+message UpdatePriceRequest {
+  string productId = 1;
+  string sku = 2;
+  double price = 3;
 }
 
 message FindProductRequest {

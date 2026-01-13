@@ -31,7 +31,24 @@ export class SearchService {
     } catch (error) {
       MicroserviceErrorHandler.handleError(
         error,
-        `search many product`,
+        `search product`,
+        'Search Service',
+      );
+    }
+  }
+
+  async searchProductsInventory(query: SearchProductsDto) {
+    try {
+      return await firstValueFrom(
+        this.searchService.handleProductSearchInventory(query).pipe(
+          timeout(10000),
+          catchError((error) => throwError(() => error)),
+        ),
+      );
+    } catch (error) {
+      MicroserviceErrorHandler.handleError(
+        error,
+        `search product inventory`,
         'Search Service',
       );
     }

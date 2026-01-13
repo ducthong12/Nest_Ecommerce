@@ -22,7 +22,7 @@ datasource db {
 
 model Inventory {
   id             Int      @id @default(autoincrement())
-  productId      String   @unique @map("product_id") // ID String từ MongoDB Product Service
+  productId      String   @map("product_id") // ID String từ MongoDB Product Service
   sku            String   @unique // Lưu lại SKU để dễ đối soát
   
   stockQuantity  Int      @default(0) @map("stock_quantity") // Tổng tồn kho vật lý
