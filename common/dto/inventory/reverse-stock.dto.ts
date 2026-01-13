@@ -1,4 +1,5 @@
 import { IsArray, IsNotEmpty, IsString } from 'class-validator';
+import { OrderItemDto } from '../order/order-item.dto';
 
 export class ReserveStockDto {
   @IsString()
@@ -7,5 +8,5 @@ export class ReserveStockDto {
 
   @IsArray()
   @IsNotEmpty()
-  items: { productId: string; quantity: number; sku: string }[];
+  items: OrderItemDto[];
 }

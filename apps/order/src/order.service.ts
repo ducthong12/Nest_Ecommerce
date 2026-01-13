@@ -24,13 +24,13 @@ export class OrderService {
             productId: i.productId,
             quantity: i.quantity,
             price: 50000,
+            productSku: i.sku,
           })),
         },
       },
-      include: { items: true }, // Lấy items để dùng cho job
+      include: { items: true },
     });
 
-    // Gửi tin nhắn Kafka để xử lý việc reserve stock
     this.kafkaClient.emit(
       'inventory.log',
       JSON.stringify({
@@ -40,7 +40,6 @@ export class OrderService {
       }),
     );
 
-    //Send order data to payment service via Kafka
     this.kafkaClient.emit(
       'payment.init',
       JSON.stringify({
@@ -78,4 +77,6 @@ export class OrderService {
 
     return order;
   }
+
+  private formatOrderItem() {}
 }

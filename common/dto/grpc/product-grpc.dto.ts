@@ -4,6 +4,7 @@ import { FilterProductDto } from '../product/filter-product.dto';
 import { CreateCategoryDto } from '../product/create-category.dto';
 import { UpdateProductDto } from '../product/update-product.dto';
 import { CreateBrandDto } from '../product/create-brand.dto';
+import { UpdatePriceDto } from '../product/update-price.dto';
 
 export class ProductGrpcDto {
   createProduct: (data: CreateProductDto) => Observable<any>;
@@ -15,4 +16,5 @@ export class ProductGrpcDto {
   findAllProducts: (data: FilterProductDto) => Observable<any>;
   createCategory: (data: CreateCategoryDto) => Observable<any>;
   createBrand: (data: CreateBrandDto) => Observable<any>;
+  updatePrice: (data: UpdatePriceDto) => Observable<any>;
 }

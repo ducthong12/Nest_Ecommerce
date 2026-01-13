@@ -47,4 +47,9 @@ export class SearchController {
   async handleProductSearch(@Payload() message: SearchProductsDto) {
     return await this.searchService.searchProduct(message);
   }
+
+  @GrpcMethod('SearchService', 'HandleProductSearchInventory')
+  async handleProductSearchInventory(@Payload() message: SearchProductsDto) {
+    return await this.searchService.searchProductInventory(message);
+  }
 }

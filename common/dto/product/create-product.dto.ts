@@ -22,7 +22,7 @@ export class VariantAttributeDto {
   v: string;
 }
 
-export class CreateProductVariantDto {
+export class ProductVariantDto {
   @IsString()
   @IsNotEmpty()
   sku: string;
@@ -36,7 +36,12 @@ export class CreateProductVariantDto {
   @Min(0)
   @IsOptional()
   @Type(() => Number)
-  original_price?: number;
+  originalPrice?: number;
+
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  stockSnapshot: number;
 
   @IsString()
   @IsOptional()
@@ -77,6 +82,7 @@ export class CreateProductDto {
 
   @IsBoolean()
   @IsOptional()
+  @Type(() => Boolean)
   isActive?: boolean;
 
   @IsNumber()
@@ -94,8 +100,8 @@ export class CreateProductDto {
   @IsArray()
   @ArrayMinSize(1, { message: 'Sản phẩm phải có ít nhất 1 biến thể' })
   @ValidateNested({ each: true })
-  @Type(() => CreateProductVariantDto)
-  variants: CreateProductVariantDto[];
+  @Type(() => ProductVariantDto)
+  variants: ProductVariantDto[];
 
   @IsArray()
   @IsOptional()

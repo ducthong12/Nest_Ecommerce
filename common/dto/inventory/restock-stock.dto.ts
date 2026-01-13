@@ -8,7 +8,6 @@ export class RestockStockDto {
 
   @Type(() => Number)
   @IsNumber()
-  @Min(1)
   quantity: number;
 
   @IsString()

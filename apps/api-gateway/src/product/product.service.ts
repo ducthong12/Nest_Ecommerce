@@ -8,6 +8,7 @@ import { CreateProductDto } from 'common/dto/product/create-product.dto';
 import { MicroserviceErrorHandler } from '../common/microservice-error.handler';
 import { catchError, firstValueFrom, throwError, timeout } from 'rxjs';
 import { UpdateProductDto } from 'common/dto/product/update-product.dto';
+import { UpdatePriceDto } from 'common/dto/product/update-price.dto';
 
 @Injectable()
 export class ProductService {
@@ -138,7 +139,24 @@ export class ProductService {
     } catch (error) {
       MicroserviceErrorHandler.handleError(
         error,
-        `updateProduct`,
+        `updateProduct with DTO: ${JSON.stringify(updateProductDto)}`,
+        'Product Service',
+      );
+    }
+  }
+
+  async updatePrice(updatePriceDto: UpdatePriceDto) {
+    try {
+      return await firstValueFrom(
+        this.productService.updatePrice(updatePriceDto).pipe(
+          timeout(10000),
+          catchError((error) => throwError(() => error)),
+        ),
+      );
+    } catch (error) {
+      MicroserviceErrorHandler.handleError(
+        error,
+        `updatePrice with DTO: ${JSON.stringify(updatePriceDto)}`,
         'Product Service',
       );
     }
