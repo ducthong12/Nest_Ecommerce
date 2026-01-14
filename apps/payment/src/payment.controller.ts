@@ -8,6 +8,7 @@ import {
   Payload,
 } from '@nestjs/microservices';
 import { PaymentSuccessDto } from 'common/dto/payment/payment-success.dto';
+import { PaymentCancelDto } from 'common/dto/payment/cancel-payment.dto';
 
 @Controller()
 export class PaymentController {
@@ -28,6 +29,15 @@ export class PaymentController {
     @Ctx() context: KafkaContext,
   ) {
     const result = await this.paymentService.paymentSuccess(message);
+    return result;
+  }
+
+  @EventPattern('payment.cancel')
+  async paymentCancel(
+    @Payload() message: PaymentCancelDto,
+    @Ctx() context: KafkaContext,
+  ) {
+    const result = await this.paymentService.paymentCancel(message);
     return result;
   }
 

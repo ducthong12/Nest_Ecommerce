@@ -58,8 +58,7 @@ export class InventoryService {
       event.items.map((item) => ({
         productId: item.productId,
         quantity: item.quantity,
-        type: event.type, // Thừa kế type từ event cha
-        orderId: event.orderId,
+        type: event.type,
         sku: item.sku,
       })),
     );
@@ -143,7 +142,6 @@ export class InventoryService {
 
       return { success: true, failedProductIds };
     } catch (error) {
-      await this.releaseStock({ orderId: data.orderId, items: data.items });
       return { success: false, failedProductIds: [] };
     }
   }
@@ -155,7 +153,6 @@ export class InventoryService {
       'inventory.log',
       JSON.stringify({
         type: 'RELEASE',
-        orderId: data.orderId.toString(),
         items: data.items,
       }),
     );

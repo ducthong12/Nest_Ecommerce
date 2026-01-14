@@ -1,8 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PrismaOrderService } from '../prisma/prisma-order.service';
-import { ReserveStockDto } from 'common/dto/inventory/reverse-stock.dto';
 import { ClientKafka } from '@nestjs/microservices';
 import { CancelOrderDto } from 'common/dto/order/cancel-order.dto';
+import { OrderCheckoutDto } from 'common/dto/order/order-checkout.dto';
+import { OrderItemDto } from 'common/dto/order/order-item.dto';
+import { ConfirmOrderDto } from 'common/dto/order/confirm-order.dto';
+import { UpdateSnapShotProductDto } from 'common/dto/product/updateSnapshot-product.dto';
 
 @Injectable()
 export class OrderService {
@@ -11,8 +14,11 @@ export class OrderService {
     @Inject('ORDER_KAFKA_CLIENT') private readonly kafkaClient: ClientKafka,
   ) {}
 
-  async createOrder(data: ReserveStockDto) {
-    const amount = 100000;
+  async createOrder(data: OrderCheckoutDto) {
+    const amount = data.items.reduce(
+      (total, item) => total + item.price * item.quantity,
+      0,
+    );
 
     const order = await this.prismaOrder.order.create({
       data: {
@@ -21,10 +27,11 @@ export class OrderService {
         total: amount,
         items: {
           create: data.items.map((i) => ({
-            productId: i.productId,
             quantity: i.quantity,
-            price: 50000,
+            price: i.price,
             productSku: i.sku,
+            productId: i.productId,
+            productName: i.productName,
           })),
         },
       },
@@ -34,7 +41,6 @@ export class OrderService {
     this.kafkaClient.emit(
       'inventory.log',
       JSON.stringify({
-        orderId: order.id.toString(),
         items: data.items,
         type: 'OUTBOUND',
       }),
@@ -64,19 +70,46 @@ export class OrderService {
     ).map((item) => ({
       productId: item.productId,
       quantity: item.quantity,
-    }));
+      price: item.price.toNumber(),
+      sku: item.productSku,
+    })) as OrderItemDto[];
 
-    // Gửi tin nhắn Kafka để xử lý việc reserve stock
     this.kafkaClient.emit(
       'inventory.release',
       JSON.stringify({
-        orderId: order.id.toString(),
         items: items,
       }),
     );
 
+    for (const item of items) {
+      this.kafkaClient.emit(
+        'product.restock',
+        JSON.stringify({
+          productId: item.productId,
+          quantity: item.quantity,
+          sku: item.sku,
+          type: 'INBOUND',
+        } as UpdateSnapShotProductDto),
+      );
+    }
+
     return order;
   }
 
-  private formatOrderItem() {}
+  async getOrder(id: number) {
+    const result = await this.prismaOrder.order.findUnique({
+      where: { id: id },
+      include: { items: true },
+    });
+    return result;
+  }
+
+  async confirmOrder(data: ConfirmOrderDto) {
+    const order = await this.prismaOrder.order.update({
+      where: { id: data.orderId, status: 'PENDING' },
+      data: { status: 'CONFIRMED' },
+    });
+
+    return order;
+  }
 }

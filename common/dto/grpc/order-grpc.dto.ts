@@ -1,6 +1,7 @@
 import { Observable } from 'rxjs';
-import { ReserveStockDto } from '../inventory/reverse-stock.dto';
+import { OrderCheckoutDto } from '../order/order-checkout.dto';
 
 export class OrderGrpcDto {
-  createOrder: (data: ReserveStockDto) => Observable<any>;
+  createOrder: (data: OrderCheckoutDto) => Observable<any>;
+  getOrder: (data: { id: number }) => Observable<any>;
 }

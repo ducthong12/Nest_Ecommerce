@@ -27,8 +27,8 @@
     "start:product": "nest start product --watch",
     "start:payment": "nest start payment --watch",
     "start:search": "nest start search --watch",
-    "start:nodeA": "concurrently \"npm run start:apigateway --watch\"",
-    "start:nodeB": "concurrently \"npm run start:user\" \"npm run start:inventory\" \"npm run start:product\" \"npm run start:order\" \"npm run start:payment\" \"npm run start:search\" \"npm run start:storage\"",
+    "start:nodeA": "concurrently -n GATEWAY -c blue \"npm run start:apigateway\"",
+    "start:nodeB": "concurrently -n USER,INVENTORY,PRODUCT,ORDER,PAYMENT,SEARCH,STORAGE -c blue,green,pink,yellow,blue,green,pink \"npm run start:user\" \"npm run start:inventory\" \"npm run start:product\" \"npm run start:order\" \"npm run start:payment\" \"npm run start:search\" \"npm run start:storage\"",
     "generate:prisma": "concurrently \"npx prisma generate --schema=apps/user/prisma/schema.prisma\" \"npx prisma generate --schema=apps/order/prisma/schema.prisma\" \"npx prisma generate --schema=apps/inventory/prisma/schema.prisma\" \"npx prisma generate --schema=apps/payment/prisma/schema.prisma\"",
     "generate:prisma-docs": "concurrently \"npx prisma generate docs --schema=apps/user/prisma/schema.prisma\" \"npx prisma generate docs --schema=apps/order/prisma/schema.prisma\" \"npx prisma generate docs --schema=apps/inventory/prisma/schema.prisma\" \"npx prisma generate docs --schema=apps/payment/prisma/schema.prisma\"",
     "migrate:prisma": "concurrently \"npx prisma migrate dev --schema=apps/user/prisma/schema.prisma\" \"npx prisma migrate dev --schema=apps/order/prisma/schema.prisma\" \"npx prisma migrate dev --schema=apps/inventory/prisma/schema.prisma\" \"npx prisma migrate dev --schema=apps/payment/prisma/schema.prisma\""

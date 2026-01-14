@@ -5,6 +5,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { PaymentSuccessDto } from 'common/dto/payment/payment-success.dto';
 import { ClientKafka } from '@nestjs/microservices';
+import { PaymentCancelDto } from 'common/dto/payment/cancel-payment.dto';
 
 @Injectable()
 export class PaymentService {
@@ -23,15 +24,7 @@ export class PaymentService {
       },
     });
 
-    await this.paymentQueue.add(
-      'check-payment-status',
-      { orderId: data.orderId },
-      {
-        delay: 2 * 60 * 1000,
-        jobId: `payment-timeout-${data.orderId}`,
-        removeOnComplete: true,
-      },
-    );
+    await this.addTimeoutJob(data.orderId.toString());
   }
 
   async paymentSuccess(data: PaymentSuccessDto) {
@@ -48,8 +41,31 @@ export class PaymentService {
         },
       });
 
-      // Bắn Kafka báo cho Order & Inventory biết
-      //this.kafkaClient.emit('payment.success', { orderId: data.orderId });
+      await this.removeTimeoutJob(data.orderId.toString());
+    }
+  }
+
+  async paymentCancel(data: PaymentCancelDto) {
+    const payment = await this.prismaPayment.payment.findUnique({
+      where: { orderId: BigInt(data.orderId) },
+    });
+
+    if (payment && payment.status === 'PENDING') {
+      await this.prismaPayment.payment.update({
+        where: { orderId: BigInt(data.orderId) },
+        data: {
+          status: 'FAILED',
+        },
+      });
+
+      this.kafkaClient.emit(
+        'order.cancel',
+        JSON.stringify({
+          orderId: data.orderId,
+        }),
+      );
+
+      await this.removeTimeoutJob(data.orderId.toString());
     }
   }
 
@@ -71,6 +87,28 @@ export class PaymentService {
           orderId,
         }),
       );
+    }
+  }
+
+  async addTimeoutJob(orderId: string) {
+    await this.paymentQueue.add(
+      'check-payment-status',
+      { orderId: orderId },
+      {
+        delay: 2 * 60 * 1000,
+        jobId: `payment-timeout-${orderId}`,
+        removeOnComplete: true,
+      },
+    );
+  }
+
+  async removeTimeoutJob(orderId: string) {
+    const jobId = `payment-timeout-${orderId}`;
+
+    const job = await this.paymentQueue.getJob(jobId);
+
+    if (job) {
+      await job.remove();
     }
   }
 }

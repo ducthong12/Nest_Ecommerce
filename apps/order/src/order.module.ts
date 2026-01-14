@@ -20,7 +20,7 @@ import { Partitioners } from 'kafkajs';
           },
           producer: {
             allowAutoTopicCreation: true,
-            idempotent: true, // NÊN BẬT: Đảm bảo tin nhắn không bị gửi trùng (Exactly-once)
+            idempotent: true,
             createPartitioner: Partitioners.LegacyPartitioner,
           },
         },

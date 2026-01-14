@@ -55,6 +55,10 @@ async function bootstrap() {
   await app.listen(process.env.API_GATEWAY_PORT ?? 3000);
 }
 
-bootstrap().then(() => {
-  console.log('API Gateway Successfully Started');
-});
+bootstrap()
+  .then(() => {
+    console.log('API Gateway Successfully Started');
+  })
+  .catch((err) => {
+    console.error('Error starting API Gateway:', err);
+  });

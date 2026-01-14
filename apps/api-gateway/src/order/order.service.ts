@@ -1,10 +1,11 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
-import { ReserveStockDto } from 'common/dto/inventory/reverse-stock.dto';
 import { InventoryService } from '../inventory/inventory.service';
 import { catchError, firstValueFrom, throwError, timeout } from 'rxjs';
 import { NAME_SERVICE_GRPC } from '@common/constants/port-grpc.constant';
 import { ClientGrpc } from '@nestjs/microservices';
 import { OrderGrpcDto } from 'common/dto/grpc/order-grpc.dto';
+import { OrderCheckoutDto } from 'common/dto/order/order-checkout.dto';
+import { MicroserviceErrorHandler } from '../common/microservice-error.handler';
 
 @Injectable()
 export class OrderService {
@@ -21,11 +22,11 @@ export class OrderService {
     );
   }
 
-  async checkout(data: ReserveStockDto) {
+  async checkout(data: OrderCheckoutDto) {
     const stockResponse = await this.inventoryService.reserveStock(data);
 
     if (!stockResponse.success) {
-      throw new BadRequestException('Out of stock'); // Hết hàng
+      throw new BadRequestException('Out of stock');
     }
 
     const order = await firstValueFrom(
@@ -38,7 +39,23 @@ export class OrderService {
     return {
       message: 'Order created. Please pay within 10 minutes.',
       orderId: order.id,
-      paymentUrl: `https://payment-gateway.com/pay/${order.id}`,
     };
+  }
+
+  async getOrder(id: number) {
+    try {
+      return await firstValueFrom(
+        this.orderService.getOrder({ id }).pipe(
+          timeout(10000),
+          catchError((error) => throwError(() => error)),
+        ),
+      );
+    } catch (error) {
+      MicroserviceErrorHandler.handleError(
+        error,
+        `getOrder with ID: ${id}`,
+        'Order Service',
+      );
+    }
   }
 }
