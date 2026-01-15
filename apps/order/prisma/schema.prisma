@@ -36,10 +36,9 @@ model OrderItem {
   id        Int     @id @default(autoincrement())
   orderId   BigInt  @map("order_id")
   
-  // Lưu ý: productId là String vì bên Product Service dùng MongoDB
   productId String  @map("product_id") 
-  productName String? // Snapshot: Lưu lại tên SP lúc mua (phòng khi bên Product đổi tên)
-  productSku  String? // Snapshot SKU
+  productName String? 
+  productSku  String? 
   
   quantity  Int
   price     Decimal @db.Decimal(12, 2)

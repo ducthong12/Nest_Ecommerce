@@ -1,3 +1,5 @@
+import { initTracing } from 'common/jaeger/tracing';
+initTracing('inventory-service');
 import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { InventoryModule } from './inventory.module';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
@@ -20,7 +22,7 @@ async function bootstrap() {
     options: {
       package: NAME_SERVICE_GRPC.INVENTORY_PACKAGE,
       protoPath: join(__dirname, '/inventory.proto'), // Đường dẫn đến file proto
-      url: `127.0.0.1:${process.env.INVENTORY_PORT_GRPC}`,
+      url: `127.0.0.1:50054`,
     },
   });
 

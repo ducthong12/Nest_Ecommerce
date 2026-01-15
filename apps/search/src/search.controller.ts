@@ -9,10 +9,15 @@ import {
 } from '@nestjs/microservices';
 import { KafkaRetry } from '@common/decorators/kafka-retry.decorator';
 import { SearchProductsDto } from 'common/dto/search/search-products.dto';
+import { SearchOrdersService } from './searchOrders/searchOrders.service';
+import { SearchOrdersDto } from 'common/dto/search/search-orders.dto';
 
 @Controller()
 export class SearchController {
-  constructor(private readonly searchService: SearchService) {}
+  constructor(
+    private readonly searchService: SearchService,
+    private readonly searchOrdersService: SearchOrdersService,
+  ) {}
 
   @EventPattern('search.create_product')
   @KafkaRetry({
@@ -51,5 +56,36 @@ export class SearchController {
   @GrpcMethod('SearchService', 'HandleProductSearchInventory')
   async handleProductSearchInventory(@Payload() message: SearchProductsDto) {
     return await this.searchService.searchProductInventory(message);
+  }
+
+  @GrpcMethod('SearchService', 'HandleOrdersSearch')
+  async handleOrdersSearch(@Payload() message: SearchOrdersDto) {
+    return await this.searchOrdersService.searchOrders(message);
+  }
+
+  @EventPattern('search.create_order')
+  @KafkaRetry({
+    maxRetries: 2,
+    dltTopic: 'search.create_order.dlt',
+    clientToken: 'SEARCH_KAFKA_CLIENT',
+  })
+  async handleOrderCreated(
+    @Payload() message: any,
+    @Ctx() context: KafkaContext,
+  ) {
+    return await this.searchOrdersService.createOrder(message);
+  }
+
+  @EventPattern('search.update_order')
+  @KafkaRetry({
+    maxRetries: 2,
+    dltTopic: 'search.update_order.dlt',
+    clientToken: 'SEARCH_KAFKA_CLIENT',
+  })
+  async handleOrderUpdated(
+    @Payload() message: any,
+    @Ctx() context: KafkaContext,
+  ) {
+    return await this.searchOrdersService.updateOrder(message);
   }
 }

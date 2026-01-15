@@ -1,3 +1,5 @@
+import { initTracing } from 'common/jaeger/tracing';
+initTracing('search-service');
 import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { SearchModule } from './search.module';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';

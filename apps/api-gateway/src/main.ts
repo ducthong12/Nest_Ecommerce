@@ -1,3 +1,5 @@
+import { initTracing } from 'common/jaeger/tracing';
+initTracing('api-gateway');
 import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { ApiGatewayModule } from './api-gateway.module';
 import { ValidationPipe } from '@nestjs/common';

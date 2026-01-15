@@ -5,6 +5,7 @@ import { NAME_SERVICE_GRPC } from '@common/constants/port-grpc.constant';
 import { ClientGrpc } from '@nestjs/microservices';
 import { SearchGrpcDto } from 'common/dto/grpc/search-grpc.dto';
 import { SearchProductsDto } from 'common/dto/search/search-products.dto';
+import { SearchOrdersDto } from 'common/dto/search/search-orders.dto';
 
 @Injectable()
 export class SearchService {
@@ -32,6 +33,23 @@ export class SearchService {
       MicroserviceErrorHandler.handleError(
         error,
         `search product`,
+        'Search Service',
+      );
+    }
+  }
+
+  async searchOrders(query: SearchOrdersDto) {
+    try {
+      return await firstValueFrom(
+        this.searchService.handleOrdersSearch(query).pipe(
+          timeout(10000),
+          catchError((error) => throwError(() => error)),
+        ),
+      );
+    } catch (error) {
+      MicroserviceErrorHandler.handleError(
+        error,
+        `search orders`,
         'Search Service',
       );
     }

@@ -62,5 +62,10 @@ export class PaymentService {
         orderId: payment.orderId,
       }),
     );
+
+    return {
+      message: 'Payment successful and order confirmed.',
+      isSuccess: true,
+    };
   }
 }

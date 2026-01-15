@@ -5,21 +5,21 @@ services:
     image: redis:alpine
     container_name: redis-container
     ports:
-      - "6379:6379"
+      - '6379:6379'
     command: redis-server --requirepass "12345678" --appendonly yes
     volumes:
       - ./redis_data:/data # Lưu dữ liệu ra máy thật để không mất khi tắt container
     networks:
       - app-network
-    
+
   elasticsearch:
     image: elasticsearch:7.17.10
     container_name: elasticsearch
     environment:
       - discovery.type=single-node
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m" # Giới hạn RAM để máy ảo không bị treo
+      - 'ES_JAVA_OPTS=-Xms512m -Xmx512m' # Giới hạn RAM để máy ảo không bị treo
     ports:
-      - "9200:9200"
+      - '9200:9200'
     networks:
       - app-network
 
@@ -27,13 +27,44 @@ services:
     image: kibana:7.17.10
     container_name: kibana
     ports:
-      - "5601:5601"
+      - '5601:5601'
     environment:
       ELASTICSEARCH_HOSTS: http://elasticsearch:9200
     depends_on:
       - elasticsearch
     networks:
       - app-network
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: jaeger
+    ports:
+      - '16686:16686'
+      - '4317:4317'
+      - '4318:4318'
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - '9090:9090'
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - '3111:3111'
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - prometheus
+      - jaeger
 
   # 1. API Gateway
   api-gateway:

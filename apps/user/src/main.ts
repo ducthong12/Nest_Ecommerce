@@ -1,3 +1,5 @@
+import { initTracing } from 'common/jaeger/tracing';
+initTracing('user-service');
 import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { UserModule } from './user.module';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';

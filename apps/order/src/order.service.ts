@@ -38,6 +38,13 @@ export class OrderService {
       include: { items: true },
     });
 
+    const orderKafkaPayload = this.formatOrderKafkaPayload(order);
+
+    this.kafkaClient.emit(
+      'search.create_order',
+      JSON.stringify(orderKafkaPayload),
+    );
+
     this.kafkaClient.emit(
       'inventory.log',
       JSON.stringify({
@@ -58,42 +65,52 @@ export class OrderService {
   }
 
   async cancelOrder(data: CancelOrderDto) {
-    const order = await this.prismaOrder.order.update({
-      where: { id: data.orderId, status: 'PENDING' },
-      data: { status: 'CANCELED' },
-    });
+    try {
+      const order = await this.prismaOrder.order.update({
+        where: { id: data.orderId, status: 'PENDING' },
+        data: { status: 'CANCELED' },
+      });
 
-    const items = (
-      await this.prismaOrder.orderItem.findMany({
-        where: { orderId: data.orderId },
-      })
-    ).map((item) => ({
-      productId: item.productId,
-      quantity: item.quantity,
-      price: item.price.toNumber(),
-      sku: item.productSku,
-    })) as OrderItemDto[];
+      const items = (
+        await this.prismaOrder.orderItem.findMany({
+          where: { orderId: data.orderId },
+        })
+      ).map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        price: item.price.toNumber(),
+        sku: item.productSku,
+      })) as OrderItemDto[];
 
-    this.kafkaClient.emit(
-      'inventory.release',
-      JSON.stringify({
-        items: items,
-      }),
-    );
-
-    for (const item of items) {
       this.kafkaClient.emit(
-        'product.restock',
+        'search.update_order',
         JSON.stringify({
-          productId: item.productId,
-          quantity: item.quantity,
-          sku: item.sku,
-          type: 'INBOUND',
-        } as UpdateSnapShotProductDto),
+          id: data.orderId.toString(),
+          status: 'CANCELED',
+        }),
       );
-    }
 
-    return order;
+      this.kafkaClient.emit(
+        'inventory.release',
+        JSON.stringify({
+          items: items,
+        }),
+      );
+
+      for (const item of items) {
+        this.kafkaClient.emit(
+          'product.restock',
+          JSON.stringify({
+            productId: item.productId,
+            quantity: item.quantity,
+            sku: item.sku,
+            type: 'INBOUND',
+          } as UpdateSnapShotProductDto),
+        );
+      }
+
+      return order;
+    } catch (error) {}
   }
 
   async getOrder(id: number) {
@@ -105,11 +122,35 @@ export class OrderService {
   }
 
   async confirmOrder(data: ConfirmOrderDto) {
-    const order = await this.prismaOrder.order.update({
-      where: { id: data.orderId, status: 'PENDING' },
-      data: { status: 'CONFIRMED' },
-    });
+    try {
+      const order = await this.prismaOrder.order.update({
+        where: { id: data.orderId, status: 'PENDING' },
+        data: { status: 'CONFIRMED' },
+      });
 
-    return order;
+      this.kafkaClient.emit(
+        'search.update_order',
+        JSON.stringify({
+          id: data.orderId.toString(),
+          status: 'CONFIRMED',
+        }),
+      );
+
+      return order;
+    } catch (error) {}
+  }
+
+  private formatOrderKafkaPayload(order: any) {
+    return {
+      id: order.id.toString(),
+      userId: order.userId,
+      totalAmount: order.total,
+      status: order.status,
+      items: order.items.map((item: any) => ({
+        ...item,
+        orderId: item.orderId.toString(),
+      })),
+      createdAt: order.createdAt || new Date(),
+    };
   }
 }

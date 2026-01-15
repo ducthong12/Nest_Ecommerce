@@ -1,3 +1,5 @@
+import { initTracing } from 'common/jaeger/tracing';
+initTracing('payment-service');
 import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { PaymentModule } from './payment.module';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
