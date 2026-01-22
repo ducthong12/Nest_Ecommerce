@@ -23,23 +23,32 @@ export class OrderService {
   }
 
   async checkout(data: OrderCheckoutDto) {
-    const stockResponse = await this.inventoryService.reserveStock(data);
+    try {
+      const stockResponse = await this.inventoryService.reserveStock(data);
 
-    if (!stockResponse.success) {
-      throw new BadRequestException('Out of stock');
+      if (!stockResponse.success) {
+        throw new BadRequestException('Out of stock');
+      }
+
+      const order = await firstValueFrom(
+        this.orderService.createOrder(data).pipe(
+          timeout(10000),
+          catchError((error) => throwError(() => error)),
+        ),
+      );
+
+      return {
+        message: 'Order created. Please pay within 10 minutes.',
+        orderId: order.id,
+      };
+    } catch (error) {
+      console.error('Error during checkout:', error);
+      MicroserviceErrorHandler.handleError(
+        error,
+        `checkout order with data: ${JSON.stringify(data)}`,
+        'Order Service',
+      );
     }
-
-    const order = await firstValueFrom(
-      this.orderService.createOrder(data).pipe(
-        timeout(10000),
-        catchError((error) => throwError(() => error)),
-      ),
-    );
-
-    return {
-      message: 'Order created. Please pay within 10 minutes.',
-      orderId: order.id,
-    };
   }
 
   async getOrder(id: number) {

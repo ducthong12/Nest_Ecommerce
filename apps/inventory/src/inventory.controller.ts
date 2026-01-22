@@ -48,4 +48,12 @@ export class InventoryController {
   ) {
     await this.inventoryService.releaseStock(message);
   }
+
+  @EventPattern('redis.addstock')
+  async handleRedisAddStock(
+    @Payload() message: { sku: string; quantity: number },
+    @Ctx() context: KafkaContext,
+  ) {
+    await this.inventoryService.redisAddStock(message);
+  }
 }

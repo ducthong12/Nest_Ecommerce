@@ -37,15 +37,6 @@ export class ProductController {
     return this.mapToProto(result);
   }
 
-  @GrpcMethod('ProductService', 'FindAllProducts')
-  async findAllProducts(data: FilterProductDto) {
-    const result = await this.productService.findAll(data);
-    return {
-      products: result.data.map(this.mapToProto),
-      meta: result.meta,
-    };
-  }
-
   @GrpcMethod('ProductService', 'FindOneProduct')
   async findOneProduct(data: { id: string }) {
     const result = await this.productService.findOne(data.id);

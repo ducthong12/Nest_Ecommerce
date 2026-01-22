@@ -16,12 +16,14 @@ export class PaymentService {
   ) {}
 
   async createPayment(data: CreatePaymentDto) {
-    await this.prismaPayment.payment.create({
-      data: {
-        orderId: data.orderId,
-        amount: data.amount,
-        status: 'PENDING',
-      },
+    await this.prismaPayment.$transaction(async (tx) => {
+      await tx.payment.create({
+        data: {
+          orderId: data.orderId,
+          amount: data.amount,
+          status: 'PENDING',
+        },
+      });
     });
 
     await this.addTimeoutJob(data.orderId.toString());
@@ -33,12 +35,14 @@ export class PaymentService {
     });
 
     if (payment && payment.status === 'PENDING') {
-      await this.prismaPayment.payment.update({
-        where: { orderId: BigInt(data.orderId) },
-        data: {
-          status: 'SUCCESS',
-          transactionId: data.transactionId,
-        },
+      await this.prismaPayment.$transaction(async (tx) => {
+        await tx.payment.update({
+          where: { orderId: BigInt(data.orderId) },
+          data: {
+            status: 'SUCCESS',
+            transactionId: data.transactionId,
+          },
+        });
       });
 
       await this.removeTimeoutJob(data.orderId.toString());
@@ -51,43 +55,49 @@ export class PaymentService {
     });
 
     if (payment && payment.status === 'PENDING') {
-      await this.prismaPayment.payment.update({
-        where: { orderId: BigInt(data.orderId) },
-        data: {
-          status: 'FAILED',
-        },
-      });
+      await this.prismaPayment.$transaction(async (tx) => {
+        await tx.payment.update({
+          where: { orderId: BigInt(data.orderId) },
+          data: {
+            status: 'FAILED',
+          },
+        });
 
-      this.kafkaClient.emit(
-        'order.cancel',
-        JSON.stringify({
-          orderId: data.orderId,
-        }),
-      );
+        await tx.outbox.create({
+          data: {
+            topic: 'order.cancel',
+            payload: { orderId: data.orderId },
+            status: 'PENDING',
+          },
+        });
+      });
 
       await this.removeTimeoutJob(data.orderId.toString());
     }
   }
 
   async expirePayment(orderId: string) {
-    const result = await this.prismaPayment.payment.update({
-      where: {
-        orderId: BigInt(orderId),
-        status: 'PENDING',
-      },
-      data: {
-        status: 'EXPIRED',
-      },
-    });
+    await this.prismaPayment.$transaction(async (tx) => {
+      const result = await tx.payment.update({
+        where: {
+          orderId: BigInt(orderId),
+          status: 'PENDING',
+        },
+        data: {
+          status: 'EXPIRED',
+        },
+      });
 
-    if (result.orderId) {
-      this.kafkaClient.emit(
-        'order.cancel',
-        JSON.stringify({
-          orderId,
-        }),
-      );
-    }
+      if (result.orderId) {
+        await tx.outbox.create({
+          data: {
+            topic: 'order.cancel',
+            payload: { orderId: orderId },
+            status: 'PENDING',
+          },
+        });
+      }
+    });
   }
 
   async addTimeoutJob(orderId: string) {

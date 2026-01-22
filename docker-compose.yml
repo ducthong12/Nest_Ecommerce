@@ -2,13 +2,14 @@ version: '3.8'
 
 services:
   redis:
-    image: redis:alpine
     container_name: redis-container
+    build:
+      context: .
+      dockerfile: Dockerfile.redis
     ports:
       - '6379:6379'
-    command: redis-server --requirepass "12345678" --appendonly yes
     volumes:
-      - ./redis_data:/data # Lưu dữ liệu ra máy thật để không mất khi tắt container
+      - ./redis_data:/data
     networks:
       - app-network
 
@@ -186,6 +187,21 @@ services:
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+  connect:
+    image: debezium/connect:2.5
+    container_name: kafka_connect
+    ports:
+      - '8083:8083'
+    environment:
+      - BOOTSTRAP_SERVERS=kafka:29092
+      - GROUP_ID=1
+      - CONFIG_STORAGE_TOPIC=my_connect_configs
+      - OFFSET_STORAGE_TOPIC=my_connect_offsets
+      - STATUS_STORAGE_TOPIC=my_connect_statuses
+      - KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+      - VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+    depends_on:
+      - kafka
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest

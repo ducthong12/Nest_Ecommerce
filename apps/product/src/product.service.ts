@@ -140,53 +140,6 @@ export class ProductService {
     return { products: newProductArr as unknown as Product[] };
   }
 
-  async findAll(query: FilterProductDto) {
-    const { search, page = 1, limit = 10, sort, categoryId } = query;
-    const skip = (page - 1) * limit;
-
-    // Xây dựng filter query
-    const filter: any = { isActive: true };
-
-    // Tận dụng Text Index đã khai báo trong Schema
-    if (search) {
-      filter.$text = { $search: search };
-    }
-
-    if (categoryId) {
-      filter.category = new Types.ObjectId(categoryId);
-    }
-
-    // Xử lý Sort
-    let sortOption: any = { createdAt: -1 }; // Mặc định mới nhất
-    if (sort === 'price_asc') sortOption = { price: 1 };
-    if (sort === 'price_desc') sortOption = { price: -1 };
-    if (search) sortOption = { score: { $meta: 'textScore' } }; // Ưu tiên độ khớp từ khóa
-
-    // Query DB song song (đếm tổng + lấy data)
-    const [products, total] = await Promise.all([
-      this.productModel
-        .find(filter)
-        .select('-__v -updatedAt')
-        .populate('brand', 'name logo')
-        .populate('category', 'name')
-        .sort(sortOption)
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-
-      this.productModel.countDocuments(filter),
-    ]);
-
-    return {
-      data: products,
-      meta: {
-        total,
-        page,
-        lastPage: Math.ceil(total / limit),
-      },
-    };
-  }
-
   async findOne(id: string): Promise<Product> {
     if (!Types.ObjectId.isValid(id))
       throw new NotFoundException('ID không hợp lệ');

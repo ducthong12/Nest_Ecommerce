@@ -47,6 +47,19 @@ model OrderItem {
   @@map("order_items")
 }
 
+model Outbox {
+  id          String   @id @default(uuid())
+  topic       String   // Tên topic Kafka (vd: 'payment.init')
+  payload     Json     // Nội dung message
+  status      String   @default("PENDING") // PENDING, COMPLETED, FAILED
+  retryCount  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+  @@map("outbox")
+}
+
 enum OrderStatus {
   PENDING
   CONFIRMED
