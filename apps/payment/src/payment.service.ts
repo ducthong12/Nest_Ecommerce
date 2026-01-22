@@ -1,37 +1,35 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { CreatePaymentDto } from 'common/dto/payment/create-payment.dto';
+import { Injectable } from '@nestjs/common';
 import { PrismaPaymentService } from '../prisma/prisma-payment.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { PaymentSuccessDto } from 'common/dto/payment/payment-success.dto';
-import { ClientKafka } from '@nestjs/microservices';
 import { PaymentCancelDto } from 'common/dto/payment/cancel-payment.dto';
+import { OrderCreatedEvent } from 'common/dto/order/order-created.event';
 
 @Injectable()
 export class PaymentService {
   constructor(
     private prismaPayment: PrismaPaymentService,
     @InjectQueue('payment-timeout-queue') private paymentQueue: Queue,
-    @Inject('PAYMENT_KAFKA_CLIENT') private readonly kafkaClient: ClientKafka,
   ) {}
 
-  async createPayment(data: CreatePaymentDto) {
-    await this.prismaPayment.$transaction(async (tx) => {
-      await tx.payment.create({
+  async processPaymentForOrder(data: OrderCreatedEvent) {
+    const result = await this.prismaPayment.$transaction(async (tx) => {
+      return await tx.payment.create({
         data: {
-          orderId: data.orderId,
-          amount: data.amount,
+          orderId: BigInt(data.id),
+          amount: data.totalAmount,
           status: 'PENDING',
         },
       });
     });
 
-    await this.addTimeoutJob(data.orderId.toString());
+    if (result) await this.addTimeoutJob(data.id.toString());
   }
 
-  async paymentSuccess(data: PaymentSuccessDto) {
+  async processPaymentSuccessed(data: PaymentSuccessDto) {
     const payment = await this.prismaPayment.payment.findUnique({
-      where: { orderId: data.orderId },
+      where: { orderId: BigInt(data.orderId) },
     });
 
     if (payment && payment.status === 'PENDING') {
@@ -43,13 +41,26 @@ export class PaymentService {
             transactionId: data.transactionId,
           },
         });
+
+        await tx.outbox.create({
+          data: {
+            topic: 'payment.successed',
+            payload: {
+              orderId: data.orderId,
+              transactionId: data.transactionId,
+            },
+            status: 'PENDING',
+          },
+        });
       });
 
       await this.removeTimeoutJob(data.orderId.toString());
     }
+
+    return { message: 'Payment processed successfully.', isSuccess: true };
   }
 
-  async paymentCancel(data: PaymentCancelDto) {
+  async processPaymentCanceled(data: PaymentCancelDto) {
     const payment = await this.prismaPayment.payment.findUnique({
       where: { orderId: BigInt(data.orderId) },
     });
@@ -65,8 +76,10 @@ export class PaymentService {
 
         await tx.outbox.create({
           data: {
-            topic: 'order.cancel',
-            payload: { orderId: data.orderId },
+            topic: 'payment.canceled',
+            payload: {
+              orderId: data.orderId,
+            },
             status: 'PENDING',
           },
         });
@@ -74,6 +87,8 @@ export class PaymentService {
 
       await this.removeTimeoutJob(data.orderId.toString());
     }
+
+    return { message: 'Payment processed successfully.', isSuccess: true };
   }
 
   async expirePayment(orderId: string) {
@@ -91,7 +106,7 @@ export class PaymentService {
       if (result.orderId) {
         await tx.outbox.create({
           data: {
-            topic: 'order.cancel',
+            topic: 'payment.canceled',
             payload: { orderId: orderId },
             status: 'PENDING',
           },

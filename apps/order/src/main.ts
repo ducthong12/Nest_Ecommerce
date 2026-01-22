@@ -20,7 +20,7 @@ async function bootstrap() {
     transport: Transport.GRPC,
     options: {
       package: NAME_SERVICE_GRPC.ORDER_PACKAGE,
-      protoPath: join(__dirname, '/order.proto'), // Đường dẫn đến file proto
+      protoPath: join(__dirname, '/order.proto'),
       url: `127.0.0.1:50053`,
     },
   });

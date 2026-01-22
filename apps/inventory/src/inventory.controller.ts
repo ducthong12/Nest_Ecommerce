@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller } from '@nestjs/common';
 import { InventoryService } from './inventory.service';
 import {
   Ctx,
@@ -10,7 +10,7 @@ import {
 import { RestockStockDto } from 'common/dto/inventory/restock-stock.dto';
 import { ReserveStockDto } from 'common/dto/inventory/reverse-stock.dto';
 import { ReleaseStockDto } from 'common/dto/inventory/release-stock.dto';
-import { InventoryEventDto } from 'common/dto/inventory/inventory-log.dto';
+import { OrderCanceledEvent } from 'common/dto/order/order-canceled.event';
 
 @Controller()
 export class InventoryController {
@@ -33,20 +33,12 @@ export class InventoryController {
     return this.inventoryService.releaseStock(data);
   }
 
-  @EventPattern('inventory.log')
-  async handleInventorySync(
-    @Payload() message: InventoryEventDto,
+  @EventPattern('order.canceled')
+  async handleOrderCanceled(
+    @Payload() message: OrderCanceledEvent,
     @Ctx() context: KafkaContext,
   ) {
-    await this.inventoryService.addToBuffer(message);
-  }
-
-  @EventPattern('inventory.release')
-  async handleInventoryRelease(
-    @Payload() message: ReleaseStockDto,
-    @Ctx() context: KafkaContext,
-  ) {
-    await this.inventoryService.releaseStock(message);
+    await this.inventoryService.processOrderCanceled(message);
   }
 
   @EventPattern('redis.addstock')

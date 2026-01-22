@@ -1,38 +1,35 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { ClientKafka } from '@nestjs/microservices';
+import { ClientGrpc } from '@nestjs/microservices';
 import { PaymentCancelDto } from 'common/dto/payment/cancel-payment.dto';
 import { PaymentByCashDto } from 'common/dto/payment/payment-cash.dto';
 import { PaymentSuccessDto } from 'common/dto/payment/payment-success.dto';
 import { MicroserviceErrorHandler } from '../common/microservice-error.handler';
+import { catchError, firstValueFrom, throwError, timeout } from 'rxjs';
+import { NAME_SERVICE_GRPC } from '@common/constants/port-grpc.constant';
+import { PaymentGrpcDto } from 'common/dto/grpc/payment-grpc.dto';
 
 @Injectable()
 export class PaymentService {
+  private paymentService: PaymentGrpcDto;
+
   constructor(
-    @Inject('API_PAYMENT_KAFKA_CLIENT')
-    private readonly kafkaClient: ClientKafka,
+    @Inject(NAME_SERVICE_GRPC.PAYMENT_SERVICE) private client: ClientGrpc,
   ) {}
+
+  onModuleInit() {
+    this.paymentService = this.client.getService<PaymentGrpcDto>(
+      NAME_SERVICE_GRPC.PAYMENT_SERVICE,
+    );
+  }
 
   async paymentSuccess(payment: PaymentSuccessDto) {
     try {
-      this.kafkaClient.emit(
-        'payment.success',
-        JSON.stringify({
-          orderId: payment.orderId,
-          transactionId: payment.transactionId,
-        }),
+      return await firstValueFrom(
+        this.paymentService.paymentSuccessed(payment).pipe(
+          timeout(10000),
+          catchError((error) => throwError(() => error)),
+        ),
       );
-
-      this.kafkaClient.emit(
-        'order.confirm',
-        JSON.stringify({
-          orderId: payment.orderId,
-        }),
-      );
-
-      return {
-        message: 'Payment successful and order confirmed.',
-        isSuccess: true,
-      };
     } catch (error) {
       MicroserviceErrorHandler.handleError(
         error,
@@ -44,17 +41,12 @@ export class PaymentService {
 
   async paymentCancel(payment: PaymentCancelDto) {
     try {
-      this.kafkaClient.emit(
-        'payment.cancel',
-        JSON.stringify({
-          orderId: payment.orderId,
-        }),
+      return await firstValueFrom(
+        this.paymentService.paymentCanceled(payment).pipe(
+          timeout(10000),
+          catchError((error) => throwError(() => error)),
+        ),
       );
-
-      return {
-        message: 'Payment cancelled and order cancelled.',
-        isSuccess: true,
-      };
     } catch (error) {
       MicroserviceErrorHandler.handleError(
         error,
@@ -66,25 +58,12 @@ export class PaymentService {
 
   async paymentByCash(payment: PaymentByCashDto) {
     try {
-      this.kafkaClient.emit(
-        'payment.success',
-        JSON.stringify({
-          orderId: payment.orderId,
-          transactionId: payment.transactionId,
-        }),
+      return await firstValueFrom(
+        this.paymentService.paymentSuccessed(payment).pipe(
+          timeout(10000),
+          catchError((error) => throwError(() => error)),
+        ),
       );
-
-      this.kafkaClient.emit(
-        'order.confirm',
-        JSON.stringify({
-          orderId: payment.orderId,
-        }),
-      );
-
-      return {
-        message: 'Payment successful and order confirmed.',
-        isSuccess: true,
-      };
     } catch (error) {
       MicroserviceErrorHandler.handleError(
         error,

@@ -6,25 +6,37 @@ import { ClientGrpc } from '@nestjs/microservices';
 import { OrderGrpcDto } from 'common/dto/grpc/order-grpc.dto';
 import { OrderCheckoutDto } from 'common/dto/order/order-checkout.dto';
 import { MicroserviceErrorHandler } from '../common/microservice-error.handler';
+import { InventoryGrpcDto } from 'common/dto/grpc/inventory-grpc.dto';
 
 @Injectable()
 export class OrderService {
   private orderService: OrderGrpcDto;
+  private inventoryService: InventoryGrpcDto;
 
   constructor(
-    private inventoryService: InventoryService,
     @Inject(NAME_SERVICE_GRPC.ORDER_SERVICE) private client: ClientGrpc,
+    @Inject(NAME_SERVICE_GRPC.INVENTORY_SERVICE)
+    private inventoryClient: ClientGrpc,
   ) {}
 
   onModuleInit() {
     this.orderService = this.client.getService<OrderGrpcDto>(
       NAME_SERVICE_GRPC.ORDER_SERVICE,
     );
+
+    this.inventoryService = this.inventoryClient.getService<InventoryGrpcDto>(
+      NAME_SERVICE_GRPC.INVENTORY_SERVICE,
+    );
   }
 
   async checkout(data: OrderCheckoutDto) {
     try {
-      const stockResponse = await this.inventoryService.reserveStock(data);
+      const stockResponse = await firstValueFrom(
+        this.inventoryService.reserveStock(data).pipe(
+          timeout(10000),
+          catchError((error) => throwError(() => error)),
+        ),
+      );
 
       if (!stockResponse.success) {
         throw new BadRequestException('Out of stock');

@@ -20,23 +20,23 @@ export class OrderController {
     return this.orderService.getOrder(data.id);
   }
 
-  @EventPattern('order.confirm')
-  @KafkaRetry({
-    maxRetries: 2,
-    dltTopic: 'order.confirm.dlt',
-    clientToken: 'ORDER_KAFKA_CLIENT',
-  })
-  confirmOrder(data: ConfirmOrderDto) {
-    return this.orderService.confirmOrder(data);
+  @EventPattern('payment.successed')
+  // @KafkaRetry({
+  //   maxRetries: 2,
+  //   dltTopic: 'order.confirm.dlt',
+  //   clientToken: 'ORDER_KAFKA_CLIENT',
+  // })
+  handlePaymentSuccessed(data: ConfirmOrderDto) {
+    return this.orderService.processPaymentSuccessed(data);
   }
 
-  @EventPattern('order.cancel')
-  @KafkaRetry({
-    maxRetries: 2,
-    dltTopic: 'order.cancel.dlt',
-    clientToken: 'ORDER_KAFKA_CLIENT',
-  })
-  cancelOrder(data: CancelOrderDto) {
-    return this.orderService.cancelOrder(data);
+  @EventPattern('payment.canceled')
+  // @KafkaRetry({
+  //   maxRetries: 2,
+  //   dltTopic: 'order.cancel.dlt',
+  //   clientToken: 'ORDER_KAFKA_CLIENT',
+  // })
+  handlePaymentCanceled(data: CancelOrderDto) {
+    return this.orderService.processPaymentCanceled(data);
   }
 }

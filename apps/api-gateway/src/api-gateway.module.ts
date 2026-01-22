@@ -11,6 +11,7 @@ import { InventoryModule } from './inventory/inventory.module';
 import { OrderModule } from './order/order.module';
 import { SearchModule } from './search/search.module';
 import { PaymentModule } from './payment/payment.module';
+import { GrpcClientsModule } from './common/module/grpc-clients.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { PaymentModule } from './payment/payment.module';
         limit: 50,
       },
     ]),
+    GrpcClientsModule,
     UserModule,
     ProductModule,
     InventoryModule,

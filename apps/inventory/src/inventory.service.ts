@@ -5,6 +5,7 @@ import { RestockStockDto } from 'common/dto/inventory/restock-stock.dto';
 import { ReserveStockDto } from 'common/dto/inventory/reverse-stock.dto';
 import { ReleaseStockDto } from 'common/dto/inventory/release-stock.dto';
 import { RedisService } from '@app/redis';
+import { OrderCanceledEvent } from 'common/dto/order/order-canceled.event';
 
 @Injectable()
 export class InventoryService {
@@ -71,18 +72,6 @@ export class InventoryService {
             data: { stockQuantity: { decrement: item.quantity } },
           });
         }
-
-        const outboxEvents = data.items.map((item) => ({
-          topic: 'product.reserve',
-          payload: item,
-          status: 'PENDING',
-        }));
-
-        await this.prismaInventory.$transaction(async (tx) => {
-          await tx.outbox.createMany({
-            data: outboxEvents as any,
-          });
-        });
       });
 
       return { success: true, failedProductIds };
@@ -112,5 +101,20 @@ export class InventoryService {
       sku: data.sku,
       quantity: data.quantity,
     });
+  }
+
+  async processOrderCanceled(data: OrderCanceledEvent) {
+    await this.redisService.releaseAtomic(data.items);
+
+    await this.prismaInventory.$transaction(async (tx) => {
+      for (const item of data.items) {
+        await tx.inventory.update({
+          where: { sku: item.sku },
+          data: { stockQuantity: { increment: item.quantity } },
+        });
+      }
+    });
+
+    return { success: true };
   }
 }

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ElasticsearchService } from '@nestjs/elasticsearch';
+import { OrderCreatedEvent } from 'common/dto/order/order-created.event';
 import { SearchOrdersDto } from 'common/dto/search/search-orders.dto';
 
 @Injectable()
@@ -50,11 +51,11 @@ export class SearchOrdersService {
     });
   }
 
-  async createOrder(data: any) {
+  async processCreateOrder(data: OrderCreatedEvent) {
     try {
       await this.elasticsearchService.index({
         index: 'orders',
-        id: data.id.toString(),
+        id: data.id,
         document: data,
       });
     } catch (error) {}

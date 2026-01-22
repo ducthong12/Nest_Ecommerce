@@ -1,17 +1,14 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaOrderService } from '../prisma/prisma-order.service';
-import { ClientKafka } from '@nestjs/microservices';
-import { CancelOrderDto } from 'common/dto/order/cancel-order.dto';
 import { OrderCheckoutDto } from 'common/dto/order/order-checkout.dto';
 import { OrderItemDto } from 'common/dto/order/order-item.dto';
 import { ConfirmOrderDto } from 'common/dto/order/confirm-order.dto';
-
+import { OrderCreatedEvent } from 'common/dto/order/order-created.event';
+import { CancelOrderDto } from 'common/dto/order/cancel-order.dto';
+import { OrderCanceledEvent } from 'common/dto/order/order-canceled.event';
 @Injectable()
 export class OrderService {
-  constructor(
-    private prismaOrder: PrismaOrderService,
-    @Inject('ORDER_KAFKA_CLIENT') private readonly kafkaClient: ClientKafka,
-  ) {}
+  constructor(private prismaOrder: PrismaOrderService) {}
 
   async createOrder(data: OrderCheckoutDto) {
     const amount = data.items.reduce(
@@ -38,20 +35,12 @@ export class OrderService {
         include: { items: true },
       });
 
-      const orderKafkaPayload = this.formatOrderKafkaPayload(order);
+      const dataFormat = this.formatOrderCreated(order);
 
       const outboxEvents = [
         {
-          topic: 'search.create_order',
-          payload: orderKafkaPayload,
-        },
-        {
-          topic: 'inventory.log',
-          payload: { items: data.items, type: 'OUTBOUND' },
-        },
-        {
-          topic: 'payment.init',
-          payload: { orderId: order.id.toString(), amount: amount.toString() },
+          topic: 'order.created',
+          payload: dataFormat,
         },
       ];
 
@@ -67,7 +56,7 @@ export class OrderService {
     });
   }
 
-  async cancelOrder(data: CancelOrderDto) {
+  async processPaymentCanceled(data: CancelOrderDto) {
     try {
       return await this.prismaOrder.$transaction(async (tx) => {
         const order = await tx.order.update({
@@ -75,44 +64,14 @@ export class OrderService {
           data: { status: 'CANCELED' },
         });
 
-        const items = (
-          await this.prismaOrder.orderItem.findMany({
-            where: { orderId: data.orderId },
-          })
-        ).map((item) => ({
-          productId: item.productId,
-          quantity: item.quantity,
-          price: item.price.toNumber(),
-          sku: item.productSku,
-        })) as OrderItemDto[];
+        const dataFormat = await this.formatOrderCanceled(order);
 
         const outboxEvents = [
           {
-            topic: 'search.update_order',
-            payload: {
-              id: data.orderId.toString(),
-              status: 'CANCELED',
-            },
-          },
-          {
-            topic: 'inventory.release',
-            payload: {
-              items: items,
-            },
+            topic: 'order.canceled',
+            payload: dataFormat,
           },
         ];
-
-        for (const item of items) {
-          outboxEvents.push({
-            topic: 'product.restock',
-            payload: {
-              productId: item.productId,
-              quantity: item.quantity,
-              sku: item.sku,
-              type: 'INBOUND',
-            } as any,
-          });
-        }
 
         await tx.outbox.createMany({
           data: outboxEvents.map((event) => ({
@@ -135,7 +94,7 @@ export class OrderService {
     return result;
   }
 
-  async confirmOrder(data: ConfirmOrderDto) {
+  async processPaymentSuccessed(data: ConfirmOrderDto) {
     try {
       return await this.prismaOrder.$transaction(async (tx) => {
         const order = await tx.order.update({
@@ -143,30 +102,12 @@ export class OrderService {
           data: { status: 'CONFIRMED' },
         });
 
-        const outboxEvents = [
-          {
-            topic: 'search.update_order',
-            payload: {
-              id: data.orderId.toString(),
-              status: 'CONFIRMED',
-            },
-          },
-        ];
-
-        await tx.outbox.createMany({
-          data: outboxEvents.map((event) => ({
-            topic: event.topic,
-            payload: event.payload as any,
-            status: 'PENDING',
-          })),
-        });
-
         return order;
       });
     } catch (error) {}
   }
 
-  private formatOrderKafkaPayload(order: any) {
+  private formatOrderCreated(order: any): OrderCreatedEvent {
     return {
       id: order.id.toString(),
       userId: order.userId,
@@ -177,6 +118,28 @@ export class OrderService {
         orderId: item.orderId.toString(),
       })),
       createdAt: order.createdAt || new Date(),
+    };
+  }
+
+  private async formatOrderCanceled(order: any): Promise<OrderCanceledEvent> {
+    const items = (
+      await this.prismaOrder.orderItem.findMany({
+        where: { orderId: order.id },
+      })
+    ).map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      price: item.price.toNumber(),
+      sku: item.productSku,
+    })) as OrderItemDto[];
+
+    return {
+      id: order.id.toString(),
+      userId: order.userId,
+      totalAmount: order.total,
+      status: order.status,
+      updatedAt: order.updatedAt || new Date(),
+      items: items,
     };
   }
 }

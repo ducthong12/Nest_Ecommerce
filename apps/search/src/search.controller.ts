@@ -11,6 +11,7 @@ import { KafkaRetry } from '@common/decorators/kafka-retry.decorator';
 import { SearchProductsDto } from 'common/dto/search/search-products.dto';
 import { SearchOrdersService } from './searchOrders/searchOrders.service';
 import { SearchOrdersDto } from 'common/dto/search/search-orders.dto';
+import { OrderCreatedEvent } from 'common/dto/order/order-created.event';
 
 @Controller()
 export class SearchController {
@@ -20,11 +21,11 @@ export class SearchController {
   ) {}
 
   @EventPattern('search.create_product')
-  @KafkaRetry({
-    maxRetries: 2,
-    dltTopic: 'search.create_product.dlt',
-    clientToken: 'SEARCH_KAFKA_CLIENT',
-  })
+  // @KafkaRetry({
+  //   maxRetries: 2,
+  //   dltTopic: 'search.create_product.dlt',
+  //   clientToken: 'SEARCH_KAFKA_CLIENT',
+  // })
   async handleProductCreated(
     @Payload() message: any,
     @Ctx() context: KafkaContext,
@@ -63,25 +64,25 @@ export class SearchController {
     return await this.searchOrdersService.searchOrders(message);
   }
 
-  @EventPattern('search.create_order')
-  @KafkaRetry({
-    maxRetries: 2,
-    dltTopic: 'search.create_order.dlt',
-    clientToken: 'SEARCH_KAFKA_CLIENT',
-  })
+  @EventPattern('order.created')
+  // @KafkaRetry({
+  //   maxRetries: 2,
+  //   dltTopic: 'order.created.dlt',
+  //   clientToken: 'SEARCH_KAFKA_CLIENT',
+  // })
   async handleOrderCreated(
-    @Payload() message: any,
+    @Payload() message: OrderCreatedEvent,
     @Ctx() context: KafkaContext,
   ) {
-    return await this.searchOrdersService.createOrder(message);
+    return await this.searchOrdersService.processCreateOrder(message);
   }
 
-  @EventPattern('search.update_order')
-  @KafkaRetry({
-    maxRetries: 2,
-    dltTopic: 'search.update_order.dlt',
-    clientToken: 'SEARCH_KAFKA_CLIENT',
-  })
+  @EventPattern('order.updated')
+  // @KafkaRetry({
+  //   maxRetries: 2,
+  //   dltTopic: 'order.updated.dlt',
+  //   clientToken: 'SEARCH_KAFKA_CLIENT',
+  // })
   async handleOrderUpdated(
     @Payload() message: any,
     @Ctx() context: KafkaContext,
