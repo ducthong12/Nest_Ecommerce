@@ -13,7 +13,6 @@ export class ProductGrpcDto {
   }) => Observable<any>;
   updateProduct: (data: UpdateProductDto) => Observable<any>;
   findOneProduct: (data: { id: string }) => Observable<any>;
-  findAllProducts: (data: FilterProductDto) => Observable<any>;
   createCategory: (data: CreateCategoryDto) => Observable<any>;
   createBrand: (data: CreateBrandDto) => Observable<any>;
   updatePrice: (data: UpdatePriceDto) => Observable<any>;

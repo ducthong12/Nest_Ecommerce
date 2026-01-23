@@ -60,23 +60,6 @@ export class ProductService {
     }
   }
 
-  async findAllProducts() {
-    try {
-      return await firstValueFrom(
-        this.productService.findAllProducts({}).pipe(
-          timeout(10000),
-          catchError((error) => throwError(() => error)),
-        ),
-      );
-    } catch (error) {
-      MicroserviceErrorHandler.handleError(
-        error,
-        `findAllProducts`,
-        'Product Service',
-      );
-    }
-  }
-
   async findOneProduct(id: string) {
     try {
       return await firstValueFrom(

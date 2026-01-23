@@ -1,0 +1,53 @@
+### 1. Đăng ký Debezium Outbox Connector
+POST http://localhost:8083/connectors HTTP/1.1
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "inventory-outbox-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "tasks.max": "1",
+    
+    "database.hostname": "172.30.4.147", 
+    
+    "database.port": "5432",
+    "database.user": "postgres",
+    "database.password": "12345678",
+    "database.dbname": "ecommerce_db_inventory",
+
+    "topic.prefix": "inventory",
+    
+    "table.include.list": "public.outbox",
+    "plugin.name": "pgoutput",
+    "slot.name": "inventory_outbox_slot",
+
+    "_comment": "--- CẤU HÌNH OUTBOX SMT ---",
+    "transforms": "outbox",
+    "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
+
+    "transforms.outbox.route.by.field": "topic",
+    "transforms.outbox.route.topic.regex": "(.*)",
+    "transforms.outbox.route.topic.replacement": "\u00241",
+
+    "transforms.outbox.table.field.event.payload": "payload",
+    "transforms.outbox.table.expand.json.payload": "true",
+    "transforms.outbox.table.field.event.id": "id",
+    "transforms.outbox.table.field.event.key": "id",
+    "transforms.outbox.table.fields.additional.placement": "status:header,retryCount:header,createdAt:header",
+
+    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter.schemas.enable": "false",
+
+    "errors.tolerance": "all",
+    "errors.log.enable": "true",
+    "errors.log.include.messages": "true"
+  }
+}
+
+### 2. Kiểm tra trạng thái Connector (Sau khi chạy bước 1)
+GET http://localhost:8083/connectors/inventory-outbox-connector/status
+
+### 3. Xóa Connector (Nếu cấu hình sai muốn làm lại)
+DELETE http://localhost:8083/connectors/inventory-outbox-connector

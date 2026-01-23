@@ -1,8 +1,16 @@
-import { KAFKA_RETRY_METADATA, KafkaRetryOptions } from '@common/decorators/kafka-retry.decorator';
-import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
+import {
+  KAFKA_RETRY_METADATA,
+  KafkaRetryOptions,
+} from '@common/decorators/kafka-retry.decorator';
+import {
+  CallHandler,
+  ExecutionContext,
+  Injectable,
+  NestInterceptor,
+} from '@nestjs/common';
 import { ModuleRef, Reflector } from '@nestjs/core';
 import { ClientKafka, KafkaContext } from '@nestjs/microservices';
-import { catchError, lastValueFrom, Observable, of } from 'rxjs'; // Dùng thay cho toPromise đã bị deprecated
+import { catchError, lastValueFrom, Observable, of } from 'rxjs';
 
 @Injectable()
 export class KafkaRetryInterceptor implements NestInterceptor {
@@ -20,7 +28,9 @@ export class KafkaRetryInterceptor implements NestInterceptor {
     if (!options) return next.handle();
 
     // Lấy Kafka Client dựa trên Token được cấu hình ở Decorator
-    const kafkaClient = this.moduleRef.get<ClientKafka>(options.clientToken, { strict: false });
+    const kafkaClient = this.moduleRef.get<ClientKafka>(options.clientToken, {
+      strict: false,
+    });
 
     const rpcContext = context.switchToRpc().getContext<KafkaContext>();
     const topic = rpcContext.getTopic();
@@ -29,12 +39,14 @@ export class KafkaRetryInterceptor implements NestInterceptor {
     return next.handle().pipe(
       catchError(async (err) => {
         const headers = message.headers || {};
-        const retryCount = headers['x-retry-count'] ? parseInt(headers['x-retry-count'].toString()) : 0;
+        const retryCount = headers['x-retry-count']
+          ? parseInt(headers['x-retry-count'].toString())
+          : 0;
 
         const payload = {
           key: message.key,
           value: message.value,
-          headers: { ...headers }
+          headers: { ...headers },
         };
 
         if (retryCount < options.maxRetries) {

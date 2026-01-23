@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller } from '@nestjs/common';
 import { InventoryService } from './inventory.service';
 import {
   Ctx,
@@ -7,45 +7,39 @@ import {
   KafkaContext,
   Payload,
 } from '@nestjs/microservices';
-import { RestockStockDto } from 'common/dto/inventory/restock-stock.dto';
-import { ReserveStockDto } from 'common/dto/inventory/reverse-stock.dto';
-import { ReleaseStockDto } from 'common/dto/inventory/release-stock.dto';
-import { InventoryEventDto } from 'common/dto/inventory/inventory-log.dto';
+import { RestockInventoryDto } from 'common/dto/inventory/restock-stock.dto';
+import { ReserveStockInventoryDto } from 'common/dto/inventory/reverse-stock.dto';
+import { OrderCanceledEvent } from 'common/dto/order/order-canceled.event';
 
 @Controller()
 export class InventoryController {
   constructor(private readonly inventoryService: InventoryService) {}
 
-  @GrpcMethod('InventoryService', 'RestockStock')
-  async restockStock(data: RestockStockDto) {
-    const result = await this.inventoryService.restockStock(data);
+  @GrpcMethod('InventoryService', 'RestockInventory')
+  async restockInventory(data: RestockInventoryDto) {
+    const result = await this.inventoryService.restockInventory(data);
     return result;
   }
 
-  @GrpcMethod('InventoryService', 'ReserveStock')
-  async reserveStock(data: ReserveStockDto) {
-    const result = await this.inventoryService.reserveStock(data);
+  @GrpcMethod('InventoryService', 'ReserveStockInventory')
+  async reserveStockInventory(data: ReserveStockInventoryDto) {
+    const result = await this.inventoryService.reserveStockInventory(data);
     return result;
   }
 
-  @GrpcMethod('InventoryService', 'ReleaseStock')
-  async release(data: ReleaseStockDto) {
-    return this.inventoryService.releaseStock(data);
-  }
-
-  @EventPattern('inventory.log')
-  async handleInventorySync(
-    @Payload() message: InventoryEventDto,
+  @EventPattern('order.canceled')
+  async handleOrderCanceled(
+    @Payload() message: OrderCanceledEvent,
     @Ctx() context: KafkaContext,
   ) {
-    await this.inventoryService.addToBuffer(message);
+    await this.inventoryService.processOrderCanceled(message);
   }
 
-  @EventPattern('inventory.release')
-  async handleInventoryRelease(
-    @Payload() message: ReleaseStockDto,
+  @EventPattern('redis.addstock')
+  async handleRedisAddStock(
+    @Payload() message: { sku: string; quantity: number },
     @Ctx() context: KafkaContext,
   ) {
-    await this.inventoryService.releaseStock(message);
+    await this.inventoryService.redisAddStock(message);
   }
 }

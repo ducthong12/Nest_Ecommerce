@@ -36,10 +36,9 @@ model OrderItem {
   id        Int     @id @default(autoincrement())
   orderId   BigInt  @map("order_id")
   
-  // Lưu ý: productId là String vì bên Product Service dùng MongoDB
   productId String  @map("product_id") 
-  productName String? // Snapshot: Lưu lại tên SP lúc mua (phòng khi bên Product đổi tên)
-  productSku  String? // Snapshot SKU
+  productName String? 
+  productSku  String? 
   
   quantity  Int
   price     Decimal @db.Decimal(12, 2)
@@ -48,7 +47,21 @@ model OrderItem {
   @@map("order_items")
 }
 
+model Outbox {
+  id          String   @id @default(uuid())
+  topic       String   // Tên topic Kafka (vd: 'payment.init')
+  payload     Json     // Nội dung message
+  status      String   @default("PENDING") // PENDING, COMPLETED, FAILED
+  retryCount  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+  @@map("outbox")
+}
+
 enum OrderStatus {
+  DRAFT
   PENDING
   CONFIRMED
   SHIPPED

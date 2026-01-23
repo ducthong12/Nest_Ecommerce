@@ -2,12 +2,12 @@ import { Controller } from '@nestjs/common';
 import { EventPattern, GrpcMethod } from '@nestjs/microservices';
 import { ProductService } from './product.service';
 import { CreateProductDto } from 'common/dto/product/create-product.dto';
-import { FilterProductDto } from 'common/dto/product/filter-product.dto';
 import { CreateCategoryDto } from 'common/dto/product/create-category.dto';
 import { CreateBrandDto } from 'common/dto/product/create-brand.dto';
 import { UpdateProductDto } from 'common/dto/product/update-product.dto';
-import { UpdateSnapShotProductDto } from 'common/dto/product/updateSnapshot-product.dto';
 import { UpdatePriceDto } from 'common/dto/product/update-price.dto';
+import { OrderCanceledEvent } from 'common/dto/order/order-canceled.event';
+import { OrderCheckoutEvent } from 'common/dto/order/order-checkout.event';
 
 @Controller()
 export class ProductController {
@@ -37,15 +37,6 @@ export class ProductController {
     return this.mapToProto(result);
   }
 
-  @GrpcMethod('ProductService', 'FindAllProducts')
-  async findAllProducts(data: FilterProductDto) {
-    const result = await this.productService.findAll(data);
-    return {
-      products: result.data.map(this.mapToProto),
-      meta: result.meta,
-    };
-  }
-
   @GrpcMethod('ProductService', 'FindOneProduct')
   async findOneProduct(data: { id: string }) {
     const result = await this.productService.findOne(data.id);
@@ -72,14 +63,14 @@ export class ProductController {
     return result;
   }
 
-  @EventPattern('product.restock')
-  async restockProduct(data: UpdateSnapShotProductDto) {
-    return await this.productService.addToBuffer({ ...data, type: 'INBOUND' });
+  @EventPattern('order.canceled')
+  async handleOrderCanceled(data: OrderCanceledEvent) {
+    return await this.productService.processOrderCanceled(data);
   }
 
-  @EventPattern('product.reserve')
-  async reserveProduct(data: UpdateSnapShotProductDto) {
-    return await this.productService.addToBuffer({ ...data, type: 'OUTBOUND' });
+  @EventPattern('order.checkout')
+  async reserveProduct(data: OrderCheckoutEvent) {
+    return await this.productService.processOrderCreated(data);
   }
 
   private mapToProto(product: any) {

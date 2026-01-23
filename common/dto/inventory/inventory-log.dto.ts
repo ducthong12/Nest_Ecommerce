@@ -7,7 +7,6 @@ export type InventoryActionType =
   | 'INBOUND';
 
 export class InventoryEventDto {
-  orderId: string;
   type: InventoryActionType;
   items: OrderItemDto[];
 }
@@ -17,5 +16,4 @@ export interface FlatInventoryLog {
   productId: string;
   quantity: number;
   type: InventoryActionType;
-  orderId: string;
 }

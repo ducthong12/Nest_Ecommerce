@@ -4,8 +4,8 @@ import { ClientGrpc } from '@nestjs/microservices';
 import { InventoryGrpcDto } from 'common/dto/grpc/inventory-grpc.dto';
 import { catchError, firstValueFrom, throwError, timeout } from 'rxjs';
 import { MicroserviceErrorHandler } from '../common/microservice-error.handler';
-import { ReserveStockDto } from 'common/dto/inventory/reverse-stock.dto';
-import { RestockStockDto } from 'common/dto/inventory/restock-stock.dto';
+import { ReserveStockInventoryDto } from 'common/dto/inventory/reverse-stock.dto';
+import { RestockInventoryDto } from 'common/dto/inventory/restock-stock.dto';
 
 @Injectable()
 export class InventoryService {
@@ -21,10 +21,10 @@ export class InventoryService {
     );
   }
 
-  async reserveStock(data: ReserveStockDto) {
+  async reserveStockInventory(data: ReserveStockInventoryDto) {
     try {
       return await firstValueFrom(
-        this.inventoryService.reserveStock(data).pipe(
+        this.inventoryService.reserveStockInventory(data).pipe(
           timeout(10000),
           catchError((error) => throwError(() => error)),
         ),
@@ -38,10 +38,10 @@ export class InventoryService {
     }
   }
 
-  async restockStock(data: RestockStockDto) {
+  async restockInventory(data: RestockInventoryDto) {
     try {
       return await firstValueFrom(
-        this.inventoryService.restockStock(data).pipe(
+        this.inventoryService.restockInventory(data).pipe(
           timeout(10000),
           catchError((error) => throwError(() => error)),
         ),

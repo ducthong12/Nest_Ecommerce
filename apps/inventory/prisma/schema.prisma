@@ -22,28 +22,42 @@ datasource db {
 
 model Inventory {
   id             Int      @id @default(autoincrement())
-  productId      String   @map("product_id") // ID String từ MongoDB Product Service
-  sku            String   @unique // Lưu lại SKU để dễ đối soát
+  productId      String   @map("product_id") 
+  sku            String   @unique 
   
-  stockQuantity  Int      @default(0) @map("stock_quantity") // Tổng tồn kho vật lý
-  reservedStock  Int      @default(0) @map("reserved_stock") // Hàng đang được giữ cho đơn chưa thanh toán
+  stockQuantity  Int      @default(0) @map("stock_quantity") 
+  reservedStock  Int      @default(0) @map("reserved_stock") 
   
   lastUpdated    DateTime @updatedAt @map("last_updated")
 
   @@map("inventories")
 }
 
-// Bảng lịch sử nhập/xuất kho (Audit Log - Cực quan trọng cho kho)
 model InventoryTransaction {
   id          BigInt   @id @default(autoincrement())
   inventoryId Int      @map("inventory_id")
   type        TransType
   quantity    Int
-  reason      String?  // VD: "Order #123", "Restock"
+  reason      String? 
   createdAt   DateTime @default(now()) @map("created_at")
+  transactionScript String @unique
 
   @@map("inventory_transactions")
 }
+
+model Outbox {
+  id          String   @id @default(uuid())
+  topic       String   
+  payload     Json     
+  status      String   @default("PENDING") 
+  retryCount  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+  @@map("outbox")
+}
+
 
 enum TransType {
   INBOUND  // Nhập kho

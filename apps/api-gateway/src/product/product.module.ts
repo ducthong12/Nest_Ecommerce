@@ -1,25 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ProductService } from './product.service';
-import { ProductController } from './product.controller';
-import { ClientsModule, Transport } from '@nestjs/microservices';
-import { NAME_SERVICE_GRPC } from '@common/constants/port-grpc.constant';
-import { join } from 'path';
+import { ProductControllerV1 } from './product.controller';
 
 @Module({
-  imports: [
-    ClientsModule.register([
-      {
-        name: NAME_SERVICE_GRPC.PRODUCT_SERVICE,
-        transport: Transport.GRPC,
-        options: {
-          package: NAME_SERVICE_GRPC.PRODUCT_PACKAGE,
-          protoPath: join(__dirname, '/product.proto'),
-          url: `127.0.0.1:50052`,
-        },
-      },
-    ]),
-  ],
-  controllers: [ProductController],
+  controllers: [ProductControllerV1],
   providers: [ProductService],
 })
 export class ProductModule {}

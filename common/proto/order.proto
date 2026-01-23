@@ -4,6 +4,11 @@ package order;
 
 service OrderService {
   rpc CreateOrder (CreateOrderRequest) returns (CreateOrderResponse);
+  rpc UpdateOrder (UpdateOrderRequest) returns (UpdateOrderResponse);
+  rpc OrderCheckout (OrderCheckoutRequest) returns (OrderCheckoutResponse);
+  rpc GetOrderById (GetOrderRequest) returns (GetOrderResponse);
+  rpc SyncOrder (SyncOrderRequest) returns (SyncOrderResponse);
+  rpc GetOrderDraft (GetOrderDraftRequest) returns (GetOrderDraftResponse);
 }
 
 message Empty {}
@@ -11,13 +16,91 @@ message Empty {}
 message Item {
   string product_id = 1;
   int32 quantity = 2;
+  string sku = 3;
+  double price = 4;
+  optional string product_name = 5;
+}
+
+message OrderCheckoutRequest {
+  repeated Item items = 2;
 }
 
 message CreateOrderRequest {
-  string order_id = 1;
   repeated Item items = 2;
+}
+
+message UpdateOrderRequest {
+  string id = 1;
+  repeated Item items = 2;
+}
+
+message GetOrderRequest {
+  int32 id = 1;
+}
+
+message GetOrderResponse {
+  string id = 1;
+  int32 user_id = 2;
+  OrderStatus status = 3;
+  string total = 4; // Decimal(12,2)
+  repeated OrderItem items = 7;
+}
+
+message GetOrderDraftRequest {
+  int32 user_id = 1;
+}
+
+message GetOrderDraftItem {
+  string id = 1;
+  int32 user_id = 2;
+  OrderStatus status = 3;
+  string total = 4; // Decimal(12,2)
+  repeated OrderItem items = 7;
+}
+
+message GetOrderDraftResponse {
+  repeated GetOrderDraftItem orders = 1;
+}
+
+message OrderItem {
+  int32 id = 1;
+  string order_id = 2;
+  string product_id = 3;
+  string product_name = 4;
+  string product_sku = 5;
+  int32 quantity = 6;
+  string price = 7; // Decimal(12,2)
+}
+
+enum OrderStatus {
+  DRAFT     = 0;
+  PENDING   = 1;
+  PAID      = 2;
+  CANCELLED = 3;
+  SHIPPED   = 4;
+  COMPLETED = 5;
 }
 
 message CreateOrderResponse {
   string message = 1;
+  string id = 2;
+}
+
+message UpdateOrderResponse {
+  string message = 1;
+  string id = 2;
+}
+
+message OrderCheckoutResponse {
+  string message = 1;
+  string id = 2;
+}
+
+message SyncOrderRequest {
+  repeated Item items = 1;
+}
+
+message SyncOrderResponse {
+  string message = 1;
+  string id = 2;
 }

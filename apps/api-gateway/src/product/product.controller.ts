@@ -6,8 +6,8 @@ import { CreateBrandDto } from 'common/dto/product/create-brand.dto';
 import { UpdateProductDto } from 'common/dto/product/update-product.dto';
 import { UpdatePriceDto } from 'common/dto/product/update-price.dto';
 
-@Controller('product')
-export class ProductController {
+@Controller({ path: 'product', version: '1' })
+export class ProductControllerV1 {
   constructor(private readonly productService: ProductService) {}
 
   @Post('createProduct')

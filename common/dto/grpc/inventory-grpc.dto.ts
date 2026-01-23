@@ -1,8 +1,8 @@
 import { Observable } from 'rxjs';
-import { RestockStockDto } from '../inventory/restock-stock.dto';
-import { ReserveStockDto } from '../inventory/reverse-stock.dto';
+import { RestockInventoryDto } from '../inventory/restock-stock.dto';
+import { ReserveStockInventoryDto } from '../inventory/reverse-stock.dto';
 
 export class InventoryGrpcDto {
-  restockStock: (data: RestockStockDto) => Observable<any>;
-  reserveStock: (data: ReserveStockDto) => Observable<any>;
+  restockInventory: (data: RestockInventoryDto) => Observable<any>;
+  reserveStockInventory: (data: ReserveStockInventoryDto) => Observable<any>;
 }

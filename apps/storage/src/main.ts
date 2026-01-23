@@ -1,3 +1,5 @@
+import { initTracing } from 'common/jaeger/tracing';
+initTracing('storage-service');
 import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { StorageModule } from './storage.module';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';

@@ -3,19 +3,28 @@ syntax = "proto3";
 package payment;
 
 service PaymentService {
-  rpc CreatePayment (CreateOrderRequest) returns (CreateOrderResponse);
+  rpc PaymentSuccessed (PaymentSuccessedReq) returns (PaymentSuccessedRes);
+  rpc PaymentCanceled (PaymentCanceledReq) returns (PaymentCanceledRes);
 }
 
 message Empty {}
 
-message CreatePaymentRequest {
-  number order_id = 1;
-  number amount = 2;
-  string status = 3;
+message PaymentSuccessedReq {
+  string orderId = 1;
+  optional string transactionId = 2;
 }
 
-message CreatPaymentResponse {
-  number order_id = 1;
-  number amount = 2;
-  string status = 3;
+message PaymentSuccessedRes {
+  string message = 1;
+  bool isSuccess = 2;
+}
+
+message PaymentCanceledReq {
+  string orderId = 1;
+  optional string transactionId = 2;
+}
+
+message PaymentCanceledRes {
+  string message = 1;
+  bool isSuccess = 2;
 }

@@ -1,15 +1,22 @@
 import { Type } from 'class-transformer';
-import { IsNotEmpty, IsNumber, IsString, Min } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from 'class-validator';
 
 export class OrderItemDto {
-  @Type(() => BigInt)
-  @IsNumber()
-  @IsNotEmpty()
-  orderId: bigint;
-
   @IsString()
   @IsNotEmpty()
   productId: string;
+
+  @IsNumber()
+  @IsNotEmpty()
+  @Type(() => Number)
+  @Min(1)
+  price: number;
 
   @IsNumber()
   @IsNotEmpty()
@@ -20,4 +27,8 @@ export class OrderItemDto {
   @IsString()
   @IsNotEmpty()
   sku: string;
+
+  @IsString()
+  @IsOptional()
+  productName?: string;
 }

@@ -1,28 +1,21 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Product, ProductDocument } from '../schemas/product.schema';
-import { Connection, Model, ObjectId, Types } from 'mongoose';
+import { Connection, Model, Types } from 'mongoose';
 import {
   CreateProductDto,
   ProductVariantDto,
 } from 'common/dto/product/create-product.dto';
-import { FilterProductDto } from 'common/dto/product/filter-product.dto';
 import { Category } from '../schemas/category.schema';
 import { CreateBrandDto } from 'common/dto/product/create-brand.dto';
 import { Brand } from '../schemas/brand.schema';
 import { CreateCategoryDto } from 'common/dto/product/create-category.dto';
 import { ClientKafka } from '@nestjs/microservices';
 import { UpdateProductDto } from 'common/dto/product/update-product.dto';
-import {
-  bufferCount,
-  bufferTime,
-  filter,
-  merge,
-  Subject,
-  Subscription,
-} from 'rxjs';
 import { UpdateSnapShotProductDto } from 'common/dto/product/updateSnapshot-product.dto';
 import { UpdatePriceDto } from 'common/dto/product/update-price.dto';
+import { OrderCanceledEvent } from 'common/dto/order/order-canceled.event';
+import { OrderCheckoutEvent } from 'common/dto/order/order-checkout.event';
 
 interface KafkaProductPayload extends Omit<Product, 'variants'> {
   brand_name: string;
@@ -35,8 +28,6 @@ interface KafkaProductVariantPayload extends ProductVariantDto {}
 
 @Injectable()
 export class ProductService {
-  private logSubject = new Subject<any>();
-  private subscription: Subscription;
   constructor(
     @InjectModel(Product.name) private productModel: Model<ProductDocument>,
     @InjectModel(Category.name) private categoryModel: Model<Category>,
@@ -44,29 +35,6 @@ export class ProductService {
     @Inject('PRODUCT_KAFKA_CLIENT') private readonly kafkaClient: ClientKafka,
     @InjectConnection() private readonly connection: Connection,
   ) {}
-
-  onModuleInit() {
-    this.subscription = merge(
-      this.logSubject.pipe(bufferTime(500)),
-      this.logSubject.pipe(bufferCount(100)),
-    )
-      .pipe(
-        filter((events) => {
-          return events.length > 0;
-        }),
-      )
-      .subscribe(async (batchEvents: UpdateSnapShotProductDto[]) => {
-        await this.processBatch(batchEvents);
-      });
-  }
-
-  onModuleDestroy() {
-    this.subscription.unsubscribe();
-  }
-
-  async addToBuffer(message: UpdateSnapShotProductDto) {
-    this.logSubject.next(message);
-  }
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
     const { minPrice, maxPrice } = this.calculateMinMaxPrice(
@@ -138,53 +106,6 @@ export class ProductService {
     }
 
     return { products: newProductArr as unknown as Product[] };
-  }
-
-  async findAll(query: FilterProductDto) {
-    const { search, page = 1, limit = 10, sort, categoryId } = query;
-    const skip = (page - 1) * limit;
-
-    // Xây dựng filter query
-    const filter: any = { isActive: true };
-
-    // Tận dụng Text Index đã khai báo trong Schema
-    if (search) {
-      filter.$text = { $search: search };
-    }
-
-    if (categoryId) {
-      filter.category = new Types.ObjectId(categoryId);
-    }
-
-    // Xử lý Sort
-    let sortOption: any = { createdAt: -1 }; // Mặc định mới nhất
-    if (sort === 'price_asc') sortOption = { price: 1 };
-    if (sort === 'price_desc') sortOption = { price: -1 };
-    if (search) sortOption = { score: { $meta: 'textScore' } }; // Ưu tiên độ khớp từ khóa
-
-    // Query DB song song (đếm tổng + lấy data)
-    const [products, total] = await Promise.all([
-      this.productModel
-        .find(filter)
-        .select('-__v -updatedAt')
-        .populate('brand', 'name logo')
-        .populate('category', 'name')
-        .sort(sortOption)
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-
-      this.productModel.countDocuments(filter),
-    ]);
-
-    return {
-      data: products,
-      meta: {
-        total,
-        page,
-        lastPage: Math.ceil(total / limit),
-      },
-    };
   }
 
   async findOne(id: string): Promise<Product> {
@@ -289,53 +210,55 @@ export class ProductService {
     return newBrand.save();
   }
 
-  private calculateStockChanges(
-    data: UpdateSnapShotProductDto[],
-  ): Record<string, number> {
-    return data.reduce(
-      (acc, log) => {
-        const key = log.sku;
-        if (!acc[key]) acc[key] = 0;
-
-        if (log.type === 'OUTBOUND') {
-          acc[key] -= log.quantity;
-        } else {
-          acc[key] += log.quantity;
-        }
-
-        return acc;
-      },
-      {} as Record<string, number>,
-    );
-  }
-
-  private async processBatch(events: UpdateSnapShotProductDto[]) {
-    const stockChanges = this.calculateStockChanges(events);
+  async processOrderCanceled(data: OrderCanceledEvent) {
     const result = [];
-
     const session = await this.connection.startSession();
 
     session.startTransaction();
 
-    try {
-      for (const [sku, changeAmount] of Object.entries(stockChanges)) {
-        const data = await this.productModel.findOneAndUpdate(
-          { 'variants.sku': sku },
-          { $inc: { 'variants.$.stockSnapshot': changeAmount } },
-          { session },
-        );
+    for (const item of data.items) {
+      const data = await this.productModel.findOneAndUpdate(
+        { 'variants.sku': item.sku },
+        { $inc: { 'variants.$.stockSnapshot': item.quantity } },
+        { session },
+      );
 
-        result.push(data);
-      }
-
-      await session.commitTransaction();
-    } catch (error) {
-      await session.abortTransaction();
-      await session.endSession();
-      throw error;
-    } finally {
-      await session.endSession();
+      result.push(data);
     }
+
+    await session.commitTransaction();
+    await session.endSession();
+
+    for (const updatedProduct of result) {
+      const kafkaPayload = this.prepareKafkaPayloadUpdate(
+        updatedProduct.id.toString(),
+        {
+          variants: updatedProduct.variants,
+        },
+      );
+
+      this.kafkaClient.emit('search.update_product', kafkaPayload);
+    }
+  }
+
+  async processOrderCreated(data: OrderCheckoutEvent) {
+    const result = [];
+    const session = await this.connection.startSession();
+
+    session.startTransaction();
+
+    for (const item of data.items) {
+      const data = await this.productModel.findOneAndUpdate(
+        { 'variants.sku': item.sku },
+        { $inc: { 'variants.$.stockSnapshot': -item.quantity } },
+        { session },
+      );
+
+      result.push(data);
+    }
+
+    await session.commitTransaction();
+    await session.endSession();
 
     for (const updatedProduct of result) {
       const kafkaPayload = this.prepareKafkaPayloadUpdate(

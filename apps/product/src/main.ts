@@ -1,3 +1,5 @@
+import { initTracing } from 'common/jaeger/tracing';
+initTracing('product-service');
 import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { ProductModule } from './product.module';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';

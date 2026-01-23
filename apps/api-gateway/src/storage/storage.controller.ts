@@ -2,8 +2,8 @@ import { Controller, Get, Res } from '@nestjs/common';
 import { StorageService } from './storage.service';
 import { Response } from 'express'; // Bắt buộc lấy từ express
 
-@Controller('storage')
-export class StorageController {
+@Controller({ path: 'storage', version: '1' })
+export class StorageControllerV1 {
   constructor(private readonly storageService: StorageService) {}
 
   @Get('cloudfrontUrl')

@@ -10,21 +10,25 @@ import { ProductModule } from './product/product.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { OrderModule } from './order/order.module';
 import { SearchModule } from './search/search.module';
+import { PaymentModule } from './payment/payment.module';
+import { GrpcClientsModule } from './common/module/grpc-clients.module';
 
 @Module({
   imports: [
-    StorageModule,
     ThrottlerModule.forRoot([
       {
         ttl: 60000,
         limit: 50,
       },
     ]),
+    GrpcClientsModule,
     UserModule,
     ProductModule,
     InventoryModule,
     OrderModule,
     SearchModule,
+    PaymentModule,
+    StorageModule,
   ],
   controllers: [ApiGatewayController],
   providers: [

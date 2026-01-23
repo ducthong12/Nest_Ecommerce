@@ -8,7 +8,6 @@ service ProductService {
   rpc CreateProduct (CreateProductRequest) returns (ProductResponse);
   rpc CreateManyProduct (CreateManyProductRequest) returns (ManyProductResponse);
   rpc UpdateProduct (UpdateProductRequest) returns (ProductResponse);
-  rpc FindAllProducts (FindProductRequest) returns (ProductListResponse);
   rpc FindOneProduct (FindOneRequest) returns (FindOneResponse);
   rpc CreateCategory (CreateCategoryRequest) returns (CategoryResponse);
   rpc CreateBrand (CreateBrandRequest) returns (BrandResponse);
