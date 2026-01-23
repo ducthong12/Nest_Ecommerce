@@ -4,7 +4,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { PaymentSuccessDto } from 'common/dto/payment/payment-success.dto';
 import { PaymentCancelDto } from 'common/dto/payment/cancel-payment.dto';
-import { OrderCreatedEvent } from 'common/dto/order/order-created.event';
+import { OrderCheckoutEvent } from 'common/dto/order/order-checkout.event';
 
 @Injectable()
 export class PaymentService {
@@ -13,7 +13,7 @@ export class PaymentService {
     @InjectQueue('payment-timeout-queue') private paymentQueue: Queue,
   ) {}
 
-  async processPaymentForOrder(data: OrderCreatedEvent) {
+  async processPaymentForOrder(data: OrderCheckoutEvent) {
     const result = await this.prismaPayment.$transaction(async (tx) => {
       return await tx.payment.create({
         data: {

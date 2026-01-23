@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ElasticsearchService } from '@nestjs/elasticsearch';
-import { OrderCreatedEvent } from 'common/dto/order/order-created.event';
+import { OrderCheckoutEvent } from 'common/dto/order/order-checkout.event';
 import { SearchOrdersDto } from 'common/dto/search/search-orders.dto';
 
 @Injectable()
@@ -51,14 +51,16 @@ export class SearchOrdersService {
     });
   }
 
-  async processCreateOrder(data: OrderCreatedEvent) {
+  async processCreateOrder(data: OrderCheckoutEvent) {
     try {
       await this.elasticsearchService.index({
         index: 'orders',
         id: data.id,
         document: data,
       });
-    } catch (error) {}
+    } catch (error) {
+      throw new Error('Failed to index order in Elasticsearch');
+    }
   }
 
   async updateOrder(data: any) {
@@ -70,7 +72,9 @@ export class SearchOrdersService {
         id: data.id.toString(),
         doc: updateFields,
       });
-    } catch (error) {}
+    } catch (error) {
+      throw new Error('Failed to update order in Elasticsearch');
+    }
   }
 
   async removeOrder(data: any) {
@@ -79,7 +83,9 @@ export class SearchOrdersService {
         index: 'orders',
         id: data.id.toString(),
       });
-    } catch (error) {}
+    } catch (error) {
+      throw new Error('Failed to delete order in Elasticsearch');
+    }
   }
 
   async searchOrders(query: SearchOrdersDto) {

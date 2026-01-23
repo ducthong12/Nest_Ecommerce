@@ -1,9 +1,8 @@
 // src/inventory/inventory.service.ts
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaInventoryService } from '../prisma/prismaInventory.service';
-import { RestockStockDto } from 'common/dto/inventory/restock-stock.dto';
-import { ReserveStockDto } from 'common/dto/inventory/reverse-stock.dto';
-import { ReleaseStockDto } from 'common/dto/inventory/release-stock.dto';
+import { RestockInventoryDto } from 'common/dto/inventory/restock-stock.dto';
+import { ReserveStockInventoryDto } from 'common/dto/inventory/reverse-stock.dto';
 import { RedisService } from '@app/redis';
 import { OrderCanceledEvent } from 'common/dto/order/order-canceled.event';
 
@@ -14,48 +13,52 @@ export class InventoryService {
     private readonly prismaInventory: PrismaInventoryService,
   ) {}
 
-  async restockStock(data: RestockStockDto) {
-    const result = await this.prismaInventory.$transaction(async (tx) => {
-      const inventory = await this.prismaInventory.inventory.upsert({
-        where: { sku: data.sku },
-        update: { stockQuantity: { increment: data.quantity } },
-        create: {
-          productId: data.productId,
-          stockQuantity: data.quantity,
-          reservedStock: 0,
-          sku: data.sku,
-        },
-      });
-
-      const outboxEvents = [
-        {
-          topic: 'product.restock',
-          payload: data,
-        },
-        {
-          topic: 'redis.addstock',
-          payload: {
+  async restockInventory(data: RestockInventoryDto) {
+    try {
+      const result = await this.prismaInventory.$transaction(async (tx) => {
+        const inventory = await this.prismaInventory.inventory.upsert({
+          where: { sku: data.sku },
+          update: { stockQuantity: { increment: data.quantity } },
+          create: {
+            productId: data.productId,
+            stockQuantity: data.quantity,
+            reservedStock: 0,
             sku: data.sku,
-            quantity: data.quantity,
           },
-        },
-      ];
+        });
 
-      await tx.outbox.createMany({
-        data: outboxEvents.map((event) => ({
-          topic: event.topic,
-          payload: event.payload as any,
-          status: 'PENDING',
-        })),
+        const outboxEvents = [
+          {
+            topic: 'product.restock',
+            payload: data,
+          },
+          {
+            topic: 'redis.addstock',
+            payload: {
+              sku: data.sku,
+              quantity: data.quantity,
+            },
+          },
+        ];
+
+        await tx.outbox.createMany({
+          data: outboxEvents.map((event) => ({
+            topic: event.topic,
+            payload: event.payload as any,
+            status: 'PENDING',
+          })),
+        });
+
+        return inventory;
       });
 
-      return inventory;
-    });
-
-    return result;
+      return result;
+    } catch (error) {
+      throw new Error('Failed to restock inventory');
+    }
   }
 
-  async reserveStock(data: ReserveStockDto) {
+  async reserveStockInventory(data: ReserveStockInventoryDto) {
     const { success, failedProductIds } = await this.redisService.reserveAtomic(
       data.items,
     );
@@ -76,45 +79,41 @@ export class InventoryService {
 
       return { success: true, failedProductIds };
     } catch (error) {
-      await this.redisService.releaseAtomic(data.items);
-      return { success: false, failedProductIds: [] };
+      throw new Error('Failed to reserve stock in Database');
     }
   }
 
-  async releaseStock(data: ReleaseStockDto) {
-    await this.redisService.releaseAtomic(data.items);
-
-    await this.prismaInventory.$transaction(async (tx) => {
-      for (const item of data.items) {
-        await tx.inventory.update({
-          where: { sku: item.sku },
-          data: { stockQuantity: { increment: item.quantity } },
-        });
-      }
-    });
-
-    return { success: true };
-  }
-
   async redisAddStock(data: { sku: string; quantity: number }) {
-    await this.redisService.addStockAtomic({
-      sku: data.sku,
-      quantity: data.quantity,
-    });
+    try {
+      await this.redisService.addStockAtomic({
+        sku: data.sku,
+        quantity: data.quantity,
+      });
+    } catch (error) {
+      throw new Error('Failed to add stock in Redis');
+    }
   }
 
   async processOrderCanceled(data: OrderCanceledEvent) {
-    await this.redisService.releaseAtomic(data.items);
+    try {
+      await this.redisService.releaseAtomic(data.items, data.id);
+    } catch (error) {
+      throw new Error('Failed to release stock in Redis');
+    }
 
-    await this.prismaInventory.$transaction(async (tx) => {
-      for (const item of data.items) {
-        await tx.inventory.update({
-          where: { sku: item.sku },
-          data: { stockQuantity: { increment: item.quantity } },
-        });
-      }
-    });
+    try {
+      await this.prismaInventory.$transaction(async (tx) => {
+        for (const item of data.items) {
+          await tx.inventory.update({
+            where: { sku: item.sku },
+            data: { stockQuantity: { increment: item.quantity } },
+          });
+        }
+      });
 
-    return { success: true };
+      return { success: true };
+    } catch (error) {
+      throw new Error('Failed to release stock in Database');
+    }
   }
 }

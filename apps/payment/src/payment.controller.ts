@@ -9,15 +9,15 @@ import {
 } from '@nestjs/microservices';
 import { PaymentSuccessDto } from 'common/dto/payment/payment-success.dto';
 import { PaymentCancelDto } from 'common/dto/payment/cancel-payment.dto';
-import { OrderCreatedEvent } from 'common/dto/order/order-created.event';
+import { OrderCheckoutEvent } from 'common/dto/order/order-checkout.event';
 
 @Controller()
 export class PaymentController {
   constructor(private readonly paymentService: PaymentService) {}
 
-  @EventPattern('order.created')
+  @EventPattern('order.checkout')
   async handleOrderCreated(
-    @Payload() message: OrderCreatedEvent,
+    @Payload() message: OrderCheckoutEvent,
     @Ctx() context: KafkaContext,
   ) {
     return await this.paymentService.processPaymentForOrder(message);

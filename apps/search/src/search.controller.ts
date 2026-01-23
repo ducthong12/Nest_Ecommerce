@@ -11,7 +11,7 @@ import { KafkaRetry } from '@common/decorators/kafka-retry.decorator';
 import { SearchProductsDto } from 'common/dto/search/search-products.dto';
 import { SearchOrdersService } from './searchOrders/searchOrders.service';
 import { SearchOrdersDto } from 'common/dto/search/search-orders.dto';
-import { OrderCreatedEvent } from 'common/dto/order/order-created.event';
+import { OrderCheckoutEvent } from 'common/dto/order/order-checkout.event';
 
 @Controller()
 export class SearchController {
@@ -64,14 +64,14 @@ export class SearchController {
     return await this.searchOrdersService.searchOrders(message);
   }
 
-  @EventPattern('order.created')
+  @EventPattern('order.checkout')
   // @KafkaRetry({
   //   maxRetries: 2,
   //   dltTopic: 'order.created.dlt',
   //   clientToken: 'SEARCH_KAFKA_CLIENT',
   // })
   async handleOrderCreated(
-    @Payload() message: OrderCreatedEvent,
+    @Payload() message: OrderCheckoutEvent,
     @Ctx() context: KafkaContext,
   ) {
     return await this.searchOrdersService.processCreateOrder(message);

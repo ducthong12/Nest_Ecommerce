@@ -1,5 +1,4 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
-import { InventoryService } from '../inventory/inventory.service';
 import { catchError, firstValueFrom, throwError, timeout } from 'rxjs';
 import { NAME_SERVICE_GRPC } from '@common/constants/port-grpc.constant';
 import { ClientGrpc } from '@nestjs/microservices';
@@ -7,6 +6,8 @@ import { OrderGrpcDto } from 'common/dto/grpc/order-grpc.dto';
 import { OrderCheckoutDto } from 'common/dto/order/order-checkout.dto';
 import { MicroserviceErrorHandler } from '../common/microservice-error.handler';
 import { InventoryGrpcDto } from 'common/dto/grpc/inventory-grpc.dto';
+import { CreateOrderDto } from 'common/dto/order/create-order.dto';
+import { UpdateOrderDto } from 'common/dto/order/update-order.dto';
 
 @Injectable()
 export class OrderService {
@@ -29,10 +30,54 @@ export class OrderService {
     );
   }
 
+  async createOrder(data: CreateOrderDto) {
+    try {
+      const order = await firstValueFrom(
+        this.orderService.createOrder(data).pipe(
+          timeout(10000),
+          catchError((error) => throwError(() => error)),
+        ),
+      );
+
+      return {
+        message: 'Create order.',
+        orderId: order.id,
+      };
+    } catch (error) {
+      MicroserviceErrorHandler.handleError(
+        error,
+        `create order with data: ${JSON.stringify(data)}`,
+        'Order Service',
+      );
+    }
+  }
+
+  async updateOrder(data: UpdateOrderDto) {
+    try {
+      const order = await firstValueFrom(
+        this.orderService.updateOrder(data).pipe(
+          timeout(10000),
+          catchError((error) => throwError(() => error)),
+        ),
+      );
+
+      return {
+        message: 'Update order.',
+        orderId: order.id,
+      };
+    } catch (error) {
+      MicroserviceErrorHandler.handleError(
+        error,
+        `update order with data: ${JSON.stringify(data)}`,
+        'Order Service',
+      );
+    }
+  }
+
   async checkout(data: OrderCheckoutDto) {
     try {
       const stockResponse = await firstValueFrom(
-        this.inventoryService.reserveStock(data).pipe(
+        this.inventoryService.reserveStockInventory(data).pipe(
           timeout(10000),
           catchError((error) => throwError(() => error)),
         ),
@@ -43,18 +88,17 @@ export class OrderService {
       }
 
       const order = await firstValueFrom(
-        this.orderService.createOrder(data).pipe(
+        this.orderService.orderCheckout(data).pipe(
           timeout(10000),
           catchError((error) => throwError(() => error)),
         ),
       );
 
       return {
-        message: 'Order created. Please pay within 10 minutes.',
+        message: 'Order checkout. Please pay within 10 minutes.',
         orderId: order.id,
       };
     } catch (error) {
-      console.error('Error during checkout:', error);
       MicroserviceErrorHandler.handleError(
         error,
         `checkout order with data: ${JSON.stringify(data)}`,
@@ -63,10 +107,32 @@ export class OrderService {
     }
   }
 
-  async getOrder(id: number) {
+  async syncOrder(data: CreateOrderDto | UpdateOrderDto) {
+    try {
+      const order = await firstValueFrom(
+        this.orderService.syncOrder(data).pipe(
+          timeout(10000),
+          catchError((error) => throwError(() => error)),
+        ),
+      );
+
+      return {
+        message: 'Sync order.',
+        orderId: order.id,
+      };
+    } catch (error) {
+      MicroserviceErrorHandler.handleError(
+        error,
+        `sync order with data: ${JSON.stringify(data)}`,
+        'Order Service',
+      );
+    }
+  }
+
+  async getOrderDraft() {
     try {
       return await firstValueFrom(
-        this.orderService.getOrder({ id }).pipe(
+        this.orderService.getOrderDraft({}).pipe(
           timeout(10000),
           catchError((error) => throwError(() => error)),
         ),
@@ -74,7 +140,24 @@ export class OrderService {
     } catch (error) {
       MicroserviceErrorHandler.handleError(
         error,
-        `getOrder with ID: ${id}`,
+        `getOrderDraft`,
+        'Order Service',
+      );
+    }
+  }
+
+  async getOrderById(id: number) {
+    try {
+      return await firstValueFrom(
+        this.orderService.getOrderById({ id }).pipe(
+          timeout(10000),
+          catchError((error) => throwError(() => error)),
+        ),
+      );
+    } catch (error) {
+      MicroserviceErrorHandler.handleError(
+        error,
+        `getOrderById with ID: ${id}`,
         'Order Service',
       );
     }

@@ -15,7 +15,7 @@ import { UpdateProductDto } from 'common/dto/product/update-product.dto';
 import { UpdateSnapShotProductDto } from 'common/dto/product/updateSnapshot-product.dto';
 import { UpdatePriceDto } from 'common/dto/product/update-price.dto';
 import { OrderCanceledEvent } from 'common/dto/order/order-canceled.event';
-import { OrderCreatedEvent } from 'common/dto/order/order-created.event';
+import { OrderCheckoutEvent } from 'common/dto/order/order-checkout.event';
 
 interface KafkaProductPayload extends Omit<Product, 'variants'> {
   brand_name: string;
@@ -241,7 +241,7 @@ export class ProductService {
     }
   }
 
-  async processOrderCreated(data: OrderCreatedEvent) {
+  async processOrderCreated(data: OrderCheckoutEvent) {
     const result = [];
     const session = await this.connection.startSession();
 

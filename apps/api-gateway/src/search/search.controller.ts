@@ -3,8 +3,8 @@ import { SearchService } from './search.service';
 import { SearchProductsDto } from 'common/dto/search/search-products.dto';
 import { SearchOrdersDto } from 'common/dto/search/search-orders.dto';
 
-@Controller('search')
-export class SearchController {
+@Controller({ path: 'search', version: '1' })
+export class SearchControllerV1 {
   constructor(private readonly searchService: SearchService) {}
 
   @Get('products')

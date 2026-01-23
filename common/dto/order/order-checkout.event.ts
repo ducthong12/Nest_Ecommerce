@@ -2,7 +2,7 @@ import { Type } from 'class-transformer';
 import { IsArray, IsNotEmpty, IsNumber, IsString } from 'class-validator';
 import { OrderItemDto } from './order-item.dto';
 
-export class OrderCreatedEvent {
+export class OrderCheckoutEvent {
   @Type(() => String)
   @IsString()
   @IsNotEmpty()
@@ -18,7 +18,13 @@ export class OrderCreatedEvent {
   @IsNotEmpty()
   totalAmount: number;
 
-  status: 'PENDING' | 'CONFIRMED' | 'SHIPPED' | 'COMPLETED' | 'CANCELED';
+  status:
+    | 'PENDING'
+    | 'CONFIRMED'
+    | 'SHIPPED'
+    | 'COMPLETED'
+    | 'CANCELED'
+    | 'DRAFT';
 
   @IsArray()
   @Type(() => OrderItemDto)

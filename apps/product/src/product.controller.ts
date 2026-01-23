@@ -7,7 +7,7 @@ import { CreateBrandDto } from 'common/dto/product/create-brand.dto';
 import { UpdateProductDto } from 'common/dto/product/update-product.dto';
 import { UpdatePriceDto } from 'common/dto/product/update-price.dto';
 import { OrderCanceledEvent } from 'common/dto/order/order-canceled.event';
-import { OrderCreatedEvent } from 'common/dto/order/order-created.event';
+import { OrderCheckoutEvent } from 'common/dto/order/order-checkout.event';
 
 @Controller()
 export class ProductController {
@@ -68,8 +68,8 @@ export class ProductController {
     return await this.productService.processOrderCanceled(data);
   }
 
-  @EventPattern('order.created')
-  async reserveProduct(data: OrderCreatedEvent) {
+  @EventPattern('order.checkout')
+  async reserveProduct(data: OrderCheckoutEvent) {
     return await this.productService.processOrderCreated(data);
   }
 

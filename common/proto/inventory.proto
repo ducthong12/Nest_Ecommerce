@@ -3,8 +3,8 @@ syntax = "proto3";
 package inventory;
 
 service InventoryService {
-  rpc RestockStock (RestockStockRequest) returns (InventoryResponse);
-  rpc ReserveStock (ReserveStockRequest) returns (ReserveStockResponse);
+  rpc RestockInventory (RestockInventoryRequest) returns (InventoryResponse);
+  rpc ReserveStockInventory (ReserveStockInventoryRequest) returns (ReserveStockInventoryResponse);
 }
 
 // --- ENUMS ---
@@ -33,7 +33,7 @@ message InventoryResponse {
   string last_updated = 7;     // ISO Date String
 }
 
-message RestockStockRequest {
+message RestockInventoryRequest {
   string product_id = 1;
   string sku = 2;
   int32 quantity = 3;
@@ -46,11 +46,11 @@ message Item {
   double price = 4;
 }
 
-message ReserveStockRequest {
+message ReserveStockInventoryRequest {
   repeated Item items = 1;
 }
 
-message ReserveStockResponse {
+message ReserveStockInventoryResponse {
   bool success = 1;
 }
 

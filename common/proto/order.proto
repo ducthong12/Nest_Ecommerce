@@ -4,7 +4,11 @@ package order;
 
 service OrderService {
   rpc CreateOrder (CreateOrderRequest) returns (CreateOrderResponse);
-  rpc GetOrder (GetOrderRequest) returns (GetOrderResponse);
+  rpc UpdateOrder (UpdateOrderRequest) returns (UpdateOrderResponse);
+  rpc OrderCheckout (OrderCheckoutRequest) returns (OrderCheckoutResponse);
+  rpc GetOrderById (GetOrderRequest) returns (GetOrderResponse);
+  rpc SyncOrder (SyncOrderRequest) returns (SyncOrderResponse);
+  rpc GetOrderDraft (GetOrderDraftRequest) returns (GetOrderDraftResponse);
 }
 
 message Empty {}
@@ -17,7 +21,16 @@ message Item {
   optional string product_name = 5;
 }
 
+message OrderCheckoutRequest {
+  repeated Item items = 2;
+}
+
 message CreateOrderRequest {
+  repeated Item items = 2;
+}
+
+message UpdateOrderRequest {
+  string id = 1;
   repeated Item items = 2;
 }
 
@@ -33,6 +46,22 @@ message GetOrderResponse {
   repeated OrderItem items = 7;
 }
 
+message GetOrderDraftRequest {
+  int32 user_id = 1;
+}
+
+message GetOrderDraftItem {
+  string id = 1;
+  int32 user_id = 2;
+  OrderStatus status = 3;
+  string total = 4; // Decimal(12,2)
+  repeated OrderItem items = 7;
+}
+
+message GetOrderDraftResponse {
+  repeated GetOrderDraftItem orders = 1;
+}
+
 message OrderItem {
   int32 id = 1;
   string order_id = 2;
@@ -44,14 +73,34 @@ message OrderItem {
 }
 
 enum OrderStatus {
-  PENDING   = 0;
-  PAID      = 1;
-  CANCELLED = 2;
-  SHIPPED   = 3;
-  COMPLETED = 4;
+  DRAFT     = 0;
+  PENDING   = 1;
+  PAID      = 2;
+  CANCELLED = 3;
+  SHIPPED   = 4;
+  COMPLETED = 5;
 }
 
 message CreateOrderResponse {
+  string message = 1;
+  string id = 2;
+}
+
+message UpdateOrderResponse {
+  string message = 1;
+  string id = 2;
+}
+
+message OrderCheckoutResponse {
+  string message = 1;
+  string id = 2;
+}
+
+message SyncOrderRequest {
+  repeated Item items = 1;
+}
+
+message SyncOrderResponse {
   string message = 1;
   string id = 2;
 }

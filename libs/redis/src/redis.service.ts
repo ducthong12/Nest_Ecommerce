@@ -46,11 +46,18 @@ export class RedisService {
   `;
 
   private readonly RELEASE_STOCK_SCRIPT = `
-    for i = 1, #ARGV, 2 do
+    if redis.call("EXISTS", KEYS[1]) == 1 then
+      return 0 -- Đã xử lý rồi, trả về 0
+    end
+
+    for i = 2, #ARGV, 2 do
       local key = ARGV[i]
       local qty = tonumber(ARGV[i+1])
-      redis.call('INCRBY', key, qty)
+      redis.call("INCRBY", key, qty)
     end
+
+    redis.call("SET", KEYS[1], "1", "EX", ARGV[1])
+
     return 1
   `;
 
@@ -99,20 +106,28 @@ export class RedisService {
     }
   }
 
-  async releaseAtomic(items: InventoryRedis[]): Promise<void> {
-    if (items.length === 0) return;
+  async releaseAtomic(
+    items: InventoryRedis[],
+    orderId: string,
+  ): Promise<boolean> {
+    const idempotencyKey = `inventory:processed:${orderId}`;
+    const ttl = 3600;
 
-    const args = [];
-    for (const item of items) {
-      args.push(`inventory:product:${item.sku}`);
-      args.push(item.quantity);
-    }
+    const args: (string | number)[] = [ttl];
 
-    try {
-      await this.redisClient.eval(this.RELEASE_STOCK_SCRIPT, 0, ...args);
-    } catch (error) {
-      console.error('Redis Release Error:', error);
-    }
+    items.forEach((item) => {
+      const stockKey = `inventory:product:${item.sku}`;
+      args.push(stockKey, item.quantity);
+    });
+
+    const result = await this.redisClient.eval(
+      this.RELEASE_STOCK_SCRIPT,
+      1,
+      idempotencyKey,
+      ...args,
+    );
+
+    return result === 1;
   }
 
   async addStockAtomic(items: InventoryRedis): Promise<void> {
@@ -150,6 +165,15 @@ export class RedisService {
       await this.redisClient.set(key, value, 'EX', expireInSeconds);
     } catch (error) {
       throw new Error('Redis Set Key with Expire Failed');
+    }
+  }
+
+  async get(key: string): Promise<string | null> {
+    try {
+      const value = await this.redisClient.get(key);
+      return value;
+    } catch (error) {
+      throw new Error('Redis Get Key Failed');
     }
   }
 }

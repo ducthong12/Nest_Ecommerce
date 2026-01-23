@@ -2,7 +2,7 @@ import { initTracing } from 'common/jaeger/tracing';
 initTracing('api-gateway');
 import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { ApiGatewayModule } from './api-gateway.module';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptor/response.interceptor';
 import { join } from 'path';
@@ -25,6 +25,13 @@ async function bootstrap() {
   const app = await NestFactory.create(ApiGatewayModule, {
     httpsOptions,
     logger: WinstonModule.createLogger(createLoggerConfig('api-gateway')),
+  });
+
+  app.setGlobalPrefix('api');
+
+  app.enableVersioning({
+    type: VersioningType.URI,
+    defaultVersion: '1',
   });
 
   app.enableCors({
@@ -53,7 +60,7 @@ async function bootstrap() {
     new LoggingInterceptor(),
     new ResponseInterceptor(),
   );
-  app.setGlobalPrefix('api');
+
   await app.listen(process.env.API_GATEWAY_PORT ?? 3000);
 }
 

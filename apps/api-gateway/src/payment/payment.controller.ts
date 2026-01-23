@@ -4,8 +4,8 @@ import { PaymentSuccessDto } from 'common/dto/payment/payment-success.dto';
 import { PaymentByCashDto } from 'common/dto/payment/payment-cash.dto';
 import { PaymentCancelDto } from 'common/dto/payment/cancel-payment.dto';
 
-@Controller('payment')
-export class PaymentController {
+@Controller({ path: 'payment', version: '1' })
+export class PaymentControllerV1 {
   constructor(private readonly paymentService: PaymentService) {}
 
   @Post('success')

@@ -102,9 +102,9 @@ export class InventoryProcessor extends WorkerHost {
         .filter((b) => b.data.type === 'RESERVE')
         .flatMap((b) => b.data.payload.items);
 
-      if (reserveItemsToRollback.length > 0) {
-        await this.redisService.releaseAtomic(reserveItemsToRollback);
-      }
+      // if (reserveItemsToRollback.length > 0) {
+      //   await this.redisService.releaseAtomic(reserveItemsToRollback);
+      // }
 
       batch.forEach((job) => job.reject(error));
     }

@@ -109,137 +109,154 @@ export class SearchService {
         id: data.id,
         document: data,
       });
-    } catch (error) {}
+    } catch (error) {
+      throw new Error('Failed to create product in Elasticsearch');
+    }
   }
 
   async updateProduct(data: any) {
-    const { id: _, ...updateFields } = data;
+    try {
+      const { id: _, ...updateFields } = data;
 
-    await this.elasticsearchService.update({
-      index: 'products',
-      id: data.id,
-      doc: updateFields,
-    });
+      await this.elasticsearchService.update({
+        index: 'products',
+        id: data.id,
+        doc: updateFields,
+      });
+    } catch (error) {
+      throw new Error('Failed to update product in Elasticsearch');
+    }
   }
 
   async removeProduct(data: any) {
-    await this.elasticsearchService.delete({
-      index: 'products',
-      id: data.id,
-    });
+    try {
+      await this.elasticsearchService.delete({
+        index: 'products',
+        id: data.id,
+      });
+    } catch (error) {
+      throw new Error('Failed to remove product from Elasticsearch');
+    }
   }
 
   async searchProductInventory(query: SearchProductsDto) {
-    let searchQuery: any;
-    const userId = '1001';
+    try {
+      let searchQuery: any;
+      const userId = '1001';
 
-    if (query.valueSearch) {
-      searchQuery = {
-        bool: {
-          must: [
-            {
-              match: {
-                all_text: {
-                  query: query.valueSearch,
-                  //operator: 'and',
-                  fuzziness: 'AUTO',
-                  prefix_length: 2,
+      if (query.valueSearch) {
+        searchQuery = {
+          bool: {
+            must: [
+              {
+                match: {
+                  all_text: {
+                    query: query.valueSearch,
+                    //operator: 'and',
+                    fuzziness: 'AUTO',
+                    prefix_length: 2,
+                  },
                 },
               },
-            },
-            {
-              term: {
-                userId: userId,
-              },
-            },
-          ],
-          should: [
-            {
-              // TĂNG ĐIỂM (BOOST): Nếu khớp chính xác cụm từ thì đưa lên đầu
-              match_phrase: {
-                name: {
-                  query: query.valueSearch,
-                  boost: 5,
+              {
+                term: {
+                  userId: userId,
                 },
               },
-            },
-          ],
-        },
+            ],
+            should: [
+              {
+                match_phrase: {
+                  name: {
+                    query: query.valueSearch,
+                    boost: 5,
+                  },
+                },
+              },
+            ],
+          },
+        };
+      } else {
+        searchQuery = { match_all: {} };
+      }
+
+      const result = await this.elasticsearchService.search({
+        index: 'products',
+        from: query.from || 0,
+        size: query.size || 50,
+        query: searchQuery,
+        sort: [{ created_at: 'desc' }],
+      });
+
+      return {
+        total:
+          typeof result.hits.total === 'object'
+            ? result.hits.total.value
+            : result.hits.total,
+        products: result.hits.hits.map((hit) => hit._source),
       };
-    } else {
-      searchQuery = { match_all: {} };
+    } catch (error) {
+      throw new Error('Failed to search product inventory in Elasticsearch');
     }
-
-    const result = await this.elasticsearchService.search({
-      index: 'products',
-      from: query.from || 0,
-      size: query.size || 50,
-      query: searchQuery,
-      sort: [{ created_at: 'desc' }],
-    });
-
-    return {
-      total:
-        typeof result.hits.total === 'object'
-          ? result.hits.total.value
-          : result.hits.total,
-      products: result.hits.hits.map((hit) => hit._source),
-    };
   }
 
   async searchProduct(query: SearchProductsDto) {
-    let searchQuery: any;
+    try {
+      let searchQuery: any;
 
-    if (query.valueSearch) {
-      searchQuery = {
-        bool: {
-          must: [
-            {
-              match: {
-                all_text: {
-                  query: query.valueSearch,
-                  operator: 'and',
-                  fuzziness: 'AUTO',
-                  prefix_length: 2,
+      if (query.valueSearch) {
+        searchQuery = {
+          bool: {
+            must: [
+              {
+                match: {
+                  all_text: {
+                    query: query.valueSearch,
+                    operator: 'and',
+                    fuzziness: 'AUTO',
+                    prefix_length: 2,
+                  },
                 },
               },
-            },
-            {
-              term: {
-                isActive: true,
-              },
-            },
-          ],
-          should: [
-            {
-              match_phrase: {
-                name: {
-                  query: query.valueSearch,
-                  boost: 5,
+              {
+                term: {
+                  isActive: true,
                 },
               },
-            },
-          ],
-        },
+            ],
+            should: [
+              {
+                match_phrase: {
+                  name: {
+                    query: query.valueSearch,
+                    boost: 5,
+                  },
+                },
+              },
+            ],
+          },
+        };
+      } else {
+        searchQuery = { bool: { must: [{ term: { isActive: true } }] } };
+      }
+
+      const result = await this.elasticsearchService.search({
+        index: 'products',
+        from: query.from || 0,
+        size: query.size || 50,
+        query: searchQuery,
+        sort: [{ created_at: 'desc' }],
+      });
+
+      return {
+        total:
+          typeof result.hits.total === 'object'
+            ? result.hits.total.value
+            : result.hits.total,
+        products: result.hits.hits.map((hit) => hit._source),
       };
-    } else {
-      searchQuery = { bool: { must: [{ term: { isActive: true } }] } };
+    } catch (error) {
+      throw new Error('Failed to search products in Elasticsearch');
     }
-
-    const result = await this.elasticsearchService.search({
-      index: 'products',
-      from: query.from || 0,
-      size: query.size || 50,
-      query: searchQuery,
-      sort: [{ created_at: 'desc' }],
-    });
-
-    return {
-      total:
-        typeof result.hits.total === 'object'
-          ? result.hits.total.value
-          : result.hits.total,
-      products: result.hits.hits.map((hit) => hit._source),
-    };
   }
 }

@@ -61,6 +61,7 @@ model Outbox {
 }
 
 enum OrderStatus {
+  DRAFT
   PENDING
   CONFIRMED
   SHIPPED

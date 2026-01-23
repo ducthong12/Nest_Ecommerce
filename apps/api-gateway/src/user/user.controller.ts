@@ -5,8 +5,8 @@ import { CreateUserDto } from '../../../../common/dto/user/create-user.dto';
 import { LoginUserDto } from '../../../../common/dto/user/user.dto';
 
 @ApiTags('User')
-@Controller('user')
-export class UserController {
+@Controller({ path: 'user', version: '1' })
+export class UserControllerV1 {
   constructor(private readonly userService: UserService) {}
 
   @Get('all')
