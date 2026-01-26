@@ -85,15 +85,15 @@ export class InventoryProcessor extends WorkerHost {
           inventoryIds.set(sku, inventory.id);
         }
 
-        if (flatLogs.length > 0) {
-          await tx.inventoryTransaction.createMany({
-            data: flatLogs.map((log) => ({
-              inventoryId: inventoryIds.get(log.sku)!,
-              type: log.type,
-              quantity: log.quantity,
-            })),
-          });
-        }
+        // if (flatLogs.length > 0) {
+        //   await tx.inventoryTransaction.createMany({
+        //     data: flatLogs.map((log) => ({
+        //       inventoryId: inventoryIds.get(log.sku)!,
+        //       type: log.type,
+        //       quantity: log.quantity,
+        //     })),
+        //   });
+        // }
       });
 
       batch.forEach((job) => job.resolve({ processed: true }));

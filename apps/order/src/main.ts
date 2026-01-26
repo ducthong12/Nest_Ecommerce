@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { initTracing } from 'common/jaeger/tracing';
 initTracing('order-service');
 import { HttpAdapterHost, NestFactory } from '@nestjs/core';
@@ -16,12 +17,15 @@ async function bootstrap() {
     logger: WinstonModule.createLogger(createLoggerConfig('order-service')),
   });
 
+  // Enable graceful shutdown hooks
+  app.enableShutdownHooks();
+
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.GRPC,
     options: {
       package: NAME_SERVICE_GRPC.ORDER_PACKAGE,
       protoPath: join(__dirname, '/order.proto'),
-      url: `127.0.0.1:50053`,
+      url: process.env.ORDER_GRPC_URL,
     },
   });
 
@@ -29,13 +33,13 @@ async function bootstrap() {
     transport: Transport.KAFKA,
     options: {
       client: {
-        brokers: [process.env.KAFKA_BROKER || 'localhost:9092'],
+        brokers: process.env.KAFKA_BROKERS.split(','),
       },
       producer: {
         createPartitioner: Partitioners.LegacyPartitioner,
       },
       consumer: {
-        groupId: 'order-consumer-group', // Quan trọng: Để định danh nhóm Consumer
+        groupId: 'order-consumer-group',
         allowAutoTopicCreation: true,
         fromBeginning: true,
       },
@@ -45,14 +49,17 @@ async function bootstrap() {
   const httpAdapter = app.get(HttpAdapterHost);
   app.useGlobalInterceptors(new LoggingInterceptor());
   app.useGlobalFilters(new AllExceptionsFilter(httpAdapter));
+  app.enableCors();
 
   await app.startAllMicroservices();
-  await app.listen(6666);
+  await app.listen(process.env.ORDER_SERVICE_PORT);
 }
 
 bootstrap()
   .then(() => {
-    console.log('Order Service Successfully Started');
+    console.log(
+      `Order Service Successfully Started on port ${process.env.ORDER_SERVICE_PORT}`,
+    );
   })
   .catch((error) => {
     console.error('Order Service Fail Started', error);

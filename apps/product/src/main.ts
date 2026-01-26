@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { initTracing } from 'common/jaeger/tracing';
 initTracing('product-service');
 import { HttpAdapterHost, NestFactory } from '@nestjs/core';
@@ -16,12 +17,15 @@ async function bootstrap() {
     logger: WinstonModule.createLogger(createLoggerConfig('product-service')),
   });
 
+  // Enable graceful shutdown hooks
+  app.enableShutdownHooks();
+
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.GRPC,
     options: {
       package: NAME_SERVICE_GRPC.PRODUCT_PACKAGE,
       protoPath: join(__dirname, '/product.proto'),
-      url: `127.0.0.1:50052`,
+      url: process.env.PRODUCT_GRPC_URL,
     },
   });
 
@@ -29,7 +33,7 @@ async function bootstrap() {
     transport: Transport.KAFKA,
     options: {
       client: {
-        brokers: [process.env.KAFKA_BROKER || 'localhost:9092'],
+        brokers: process.env.KAFKA_BROKERS.split(','),
       },
       producer: {
         createPartitioner: Partitioners.LegacyPartitioner,
@@ -45,14 +49,17 @@ async function bootstrap() {
   const httpAdapter = app.get(HttpAdapterHost);
   app.useGlobalInterceptors(new LoggingInterceptor());
   app.useGlobalFilters(new AllExceptionsFilter(httpAdapter));
+  app.enableCors();
 
   await app.startAllMicroservices();
-  await app.listen(12211);
+  await app.listen(process.env.PRODUCT_SERVICE_PORT);
 }
 
 bootstrap()
   .then(() => {
-    console.log('Product Service Successfully Started');
+    console.log(
+      `Product Service Successfully Started on port ${process.env.PRODUCT_SERVICE_PORT}`,
+    );
   })
   .catch(() => {
     console.error('Product Service Fail Started');

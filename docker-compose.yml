@@ -52,9 +52,13 @@ services:
     ports:
       - '9090:9090'
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./targets.json:/etc/prometheus/targets.json:ro
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
 
   grafana:
     image: grafana/grafana:latest
@@ -63,6 +67,7 @@ services:
       - '3111:3111'
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SERVER_HTTP_PORT=3111
     depends_on:
       - prometheus
       - jaeger

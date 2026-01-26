@@ -12,9 +12,20 @@ import { OrderModule } from './order/order.module';
 import { SearchModule } from './search/search.module';
 import { PaymentModule } from './payment/payment.module';
 import { GrpcClientsModule } from './common/module/grpc-clients.module';
+import { ConfigModule } from '@nestjs/config';
+import { PrometheusModule } from '@willsoto/nestjs-prometheus';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+    PrometheusModule.register({
+      path: '/metrics',
+      defaultMetrics: {
+        enabled: true,
+      },
+    }),
     ThrottlerModule.forRoot([
       {
         ttl: 60000,

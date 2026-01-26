@@ -14,17 +14,21 @@ export class PaymentService {
   ) {}
 
   async processPaymentForOrder(data: OrderCheckoutEvent) {
-    const result = await this.prismaPayment.$transaction(async (tx) => {
-      return await tx.payment.create({
-        data: {
-          orderId: BigInt(data.id),
-          amount: data.totalAmount,
-          status: 'PENDING',
-        },
+    try {
+      const result = await this.prismaPayment.$transaction(async (tx) => {
+        return await tx.payment.create({
+          data: {
+            orderId: BigInt(data.id),
+            amount: data.totalAmount,
+            status: 'PENDING',
+          },
+        });
       });
-    });
 
-    if (result) await this.addTimeoutJob(data.id.toString());
+      if (result) await this.addTimeoutJob(data.id.toString());
+    } catch (error) {
+      throw error;
+    }
   }
 
   async processPaymentSuccessed(data: PaymentSuccessDto) {

@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { initTracing } from 'common/jaeger/tracing';
 initTracing('inventory-service');
 import { HttpAdapterHost, NestFactory } from '@nestjs/core';
@@ -17,12 +18,15 @@ async function bootstrap() {
     logger: WinstonModule.createLogger(createLoggerConfig('inventory-service')),
   });
 
+  // Enable graceful shutdown hooks
+  app.enableShutdownHooks();
+
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.GRPC,
     options: {
       package: NAME_SERVICE_GRPC.INVENTORY_PACKAGE,
-      protoPath: join(__dirname, '/inventory.proto'), // Đường dẫn đến file proto
-      url: `127.0.0.1:50054`,
+      protoPath: join(__dirname, '/inventory.proto'),
+      url: process.env.INVENTORY_GRPC_URL,
     },
   });
 
@@ -30,32 +34,34 @@ async function bootstrap() {
     transport: Transport.KAFKA,
     options: {
       client: {
-        brokers: [process.env.KAFKA_BROKER || 'localhost:9092'],
+        brokers: process.env.KAFKA_BROKERS.split(','),
       },
       producer: {
         createPartitioner: Partitioners.LegacyPartitioner,
       },
       consumer: {
-        groupId: 'inventory-consumer-group', // Quan trọng: Để định danh nhóm Consumer
+        groupId: 'inventory-consumer-group',
         allowAutoTopicCreation: true,
         fromBeginning: true,
       },
     },
   });
 
+  // app.enableCors();
+
   app.useGlobalPipes(new ValidationPipe());
   const httpAdapter = app.get(HttpAdapterHost);
   app.useGlobalFilters(new AllExceptionsFilter(httpAdapter));
   app.useGlobalInterceptors(new LoggingInterceptor());
-  app.enableCors();
-
   await app.startAllMicroservices();
-  await app.listen(3333);
+  await app.listen(process.env.INVENTORY_SERVICE_PORT);
 }
 
 bootstrap()
   .then(() => {
-    console.log('Inventory Service Successfully Started');
+    console.log(
+      `Inventory Service Successfully Started on port ${process.env.INVENTORY_SERVICE_PORT}`,
+    );
   })
   .catch((error) => {
     console.error('Inventory Service Fail Started', error);

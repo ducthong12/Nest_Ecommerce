@@ -1,0 +1,30 @@
+[
+  {
+    "targets": ["host.docker.internal:3000"],
+    "labels": { "service": "api-gateway", "env": "dev" }
+  },
+  {
+    "targets": ["host.docker.internal:3007"],
+    "labels": { "service": "user-service", "env": "dev" }
+  },
+  {
+    "targets": ["host.docker.internal:3002"],
+    "labels": { "service": "product-service", "env": "dev" }
+  },
+  {
+    "targets": ["host.docker.internal:3003"],
+    "labels": { "service": "order-service", "env": "dev" }
+  },
+  {
+    "targets": ["host.docker.internal:3004"],
+    "labels": { "service": "inventory-service", "env": "dev" }
+  },
+  {
+    "targets": ["host.docker.internal:3005"],
+    "labels": { "service": "payment-service", "env": "dev" }
+  },
+  {
+    "targets": ["host.docker.internal:3006"],
+    "labels": { "service": "search-service", "env": "dev" }
+  }
+]

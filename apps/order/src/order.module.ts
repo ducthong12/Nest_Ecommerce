@@ -5,10 +5,20 @@ import { ConfigModule } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { PrismaOrderService } from '../prisma/prisma-order.service';
 import { Partitioners } from 'kafkajs';
+import { TerminusModule } from '@nestjs/terminus';
+import { HealthController } from './health/health.controller';
+import { PrometheusModule } from '@willsoto/nestjs-prometheus';
 
 @Module({
   imports: [
+    TerminusModule,
     ConfigModule,
+    PrometheusModule.register({
+      path: '/metrics',
+      defaultMetrics: {
+        enabled: true,
+      },
+    }),
     ClientsModule.register([
       {
         name: 'ORDER_KAFKA_CLIENT',
@@ -27,7 +37,7 @@ import { Partitioners } from 'kafkajs';
       },
     ]),
   ],
-  controllers: [OrderController],
+  controllers: [OrderController, HealthController],
   providers: [OrderService, PrismaOrderService],
 })
 export class OrderModule {}

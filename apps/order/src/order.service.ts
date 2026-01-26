@@ -13,6 +13,8 @@ export class OrderService {
   constructor(private prismaOrder: PrismaOrderService) {}
 
   async orderCheckout(data: OrderCheckoutDto) {
+    let orderId: string | null = null;
+
     try {
       return await this.prismaOrder.$transaction(async (tx) => {
         const draftOrder = await tx.order.findFirst({
@@ -20,6 +22,10 @@ export class OrderService {
         });
 
         if (!draftOrder) {
+          await this.createOutboxEventFailed('order.checkout.failed', {
+            ...data,
+            id: orderId,
+          });
           throw new Error('Draft order not found');
         }
 
@@ -30,6 +36,8 @@ export class OrderService {
           },
           include: { items: true },
         });
+
+        orderId = order.id.toString();
 
         const dataFormat = this.formatOrderCreated(order);
 
@@ -51,8 +59,11 @@ export class OrderService {
         return order;
       });
     } catch (error) {
-      console.error('Error during order checkout:', error);
-      throw new Error('Failed to order checkout in Database');
+      await this.createOutboxEventFailed('order.checkout.failed', {
+        ...data,
+        id: orderId,
+      });
+      throw error;
     }
   }
 
@@ -84,7 +95,7 @@ export class OrderService {
         return order;
       });
     } catch (error) {
-      throw new Error('Failed to create order in Database');
+      throw error;
     }
   }
 
@@ -155,7 +166,7 @@ export class OrderService {
         return order;
       });
     } catch (error) {
-      throw new Error('Failed to update order in Database');
+      throw error;
     }
   }
 
@@ -169,7 +180,7 @@ export class OrderService {
         await tx.order.delete({ where: { id: BigInt(id), status: 'DRAFT' } });
       });
     } catch (error) {
-      throw new Error('Failed to remove order from Database');
+      throw error;
     }
   }
 
@@ -196,7 +207,7 @@ export class OrderService {
         return await this.createOrder(createData);
       }
     } catch (error) {
-      throw new Error('Failed to sync order in Database');
+      throw error;
     }
   }
 
@@ -228,7 +239,39 @@ export class OrderService {
         return order;
       });
     } catch (error) {
-      throw new Error('Failed to cancel order in Database');
+      throw error;
+    }
+  }
+
+  async processPaymentOrderCheckoutFailed(data: OrderCheckoutEvent) {
+    try {
+      return await this.prismaOrder.$transaction(async (tx) => {
+        const order = await tx.order.update({
+          where: { id: BigInt(data.id), status: 'PENDING' },
+          data: { status: 'CANCELED' },
+        });
+
+        const dataFormat = await this.formatOrderCanceled(order);
+
+        const outboxEvents = [
+          {
+            topic: 'order.canceled',
+            payload: dataFormat,
+          },
+        ];
+
+        await tx.outbox.createMany({
+          data: outboxEvents.map((event) => ({
+            topic: event.topic,
+            payload: event.payload as any,
+            status: 'PENDING',
+          })),
+        });
+
+        return order;
+      });
+    } catch (error) {
+      throw error;
     }
   }
 
@@ -240,7 +283,7 @@ export class OrderService {
       });
       return result;
     } catch (error) {
-      throw new Error('Failed to get order from Database');
+      throw error;
     }
   }
 
@@ -252,7 +295,7 @@ export class OrderService {
       });
       return { orders: result };
     } catch (error) {
-      throw new Error('Failed to get order draft from Database');
+      throw error;
     }
   }
 
@@ -260,14 +303,14 @@ export class OrderService {
     try {
       return await this.prismaOrder.$transaction(async (tx) => {
         const order = await tx.order.update({
-          where: { id: data.orderId, status: 'PENDING' },
+          where: { id: BigInt(data.orderId), status: 'PENDING' },
           data: { status: 'CONFIRMED' },
         });
 
         return order;
       });
     } catch (error) {
-      throw new Error('Failed to confirm order in Database');
+      throw error;
     }
   }
 
@@ -305,5 +348,19 @@ export class OrderService {
       updatedAt: order.updatedAt || new Date(),
       items: items,
     };
+  }
+
+  private async createOutboxEventFailed(topic: string, payload: any) {
+    try {
+      await this.prismaOrder.outbox.create({
+        data: {
+          topic: topic,
+          payload: payload,
+          status: 'PENDING',
+        },
+      });
+    } catch (error) {
+      throw error;
+    }
   }
 }

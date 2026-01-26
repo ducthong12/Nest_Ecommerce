@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { initTracing } from 'common/jaeger/tracing';
 initTracing('payment-service');
 import { HttpAdapterHost, NestFactory } from '@nestjs/core';
@@ -16,12 +17,15 @@ async function bootstrap() {
     logger: WinstonModule.createLogger(createLoggerConfig('payment-service')),
   });
 
+  // Enable graceful shutdown hooks
+  app.enableShutdownHooks();
+
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.GRPC,
     options: {
       package: NAME_SERVICE_GRPC.PAYMENT_PACKAGE,
       protoPath: join(__dirname, '/payment.proto'),
-      url: `127.0.0.1:50055`,
+      url: process.env.PAYMENT_GRPC_URL,
     },
   });
 
@@ -29,13 +33,13 @@ async function bootstrap() {
     transport: Transport.KAFKA,
     options: {
       client: {
-        brokers: [process.env.KAFKA_BROKER || 'localhost:9092'],
+        brokers: process.env.KAFKA_BROKERS.split(','),
       },
       producer: {
         createPartitioner: Partitioners.LegacyPartitioner,
       },
       consumer: {
-        groupId: 'payment-consumer-group', // Quan trọng: Để định danh nhóm Consumer
+        groupId: 'payment-consumer-group',
         allowAutoTopicCreation: true,
         fromBeginning: true,
       },
@@ -47,12 +51,14 @@ async function bootstrap() {
   app.useGlobalFilters(new AllExceptionsFilter(httpAdapter));
 
   await app.startAllMicroservices();
-  await app.listen(4444);
+  await app.listen(process.env.PAYMENT_SERVICE_PORT);
 }
 
 bootstrap()
   .then(() => {
-    console.log('Payment Service Successfully Started');
+    console.log(
+      `Payment Service Successfully Started on port ${process.env.PAYMENT_SERVICE_PORT}`,
+    );
   })
   .catch((error) => {
     console.error('Payment Service Fail Started', error);

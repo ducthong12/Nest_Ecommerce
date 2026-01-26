@@ -5,10 +5,20 @@ import { PrismaInventoryService } from '../prisma/prismaInventory.service';
 import { RedisModule } from '@app/redis';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { Partitioners } from 'kafkajs';
+import { HealthController } from './health/health.controller';
+import { TerminusModule } from '@nestjs/terminus';
+import { PrometheusModule } from '@willsoto/nestjs-prometheus';
 
 @Module({
   imports: [
+    TerminusModule,
     RedisModule,
+    PrometheusModule.register({
+      path: '/metrics',
+      defaultMetrics: {
+        enabled: true,
+      },
+    }),
     ClientsModule.register([
       {
         name: 'INVENTORY_KAFKA_CLIENT',
@@ -20,14 +30,14 @@ import { Partitioners } from 'kafkajs';
           },
           producer: {
             allowAutoTopicCreation: true,
-            idempotent: true, // NÊN BẬT: Đảm bảo tin nhắn không bị gửi trùng (Exactly-once)
+            idempotent: true,
             createPartitioner: Partitioners.LegacyPartitioner,
           },
         },
       },
     ]),
   ],
-  controllers: [InventoryController],
+  controllers: [HealthController, InventoryController],
   providers: [InventoryService, PrismaInventoryService],
 })
 export class InventoryModule {}

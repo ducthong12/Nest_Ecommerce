@@ -7,6 +7,8 @@ import { ConfirmOrderDto } from 'common/dto/order/confirm-order.dto';
 import { KafkaRetry } from '@common/decorators/kafka-retry.decorator';
 import { CreateOrderDto } from 'common/dto/order/create-order.dto';
 import { UpdateOrderDto } from 'common/dto/order/update-order.dto';
+import { PrismaOrderService } from '../prisma/prisma-order.service';
+import { OrderCheckoutEvent } from 'common/dto/order/order-checkout.event';
 
 @Controller()
 export class OrderController {
@@ -43,22 +45,35 @@ export class OrderController {
   }
 
   @EventPattern('payment.successed')
-  // @KafkaRetry({
-  //   maxRetries: 2,
-  //   dltTopic: 'order.confirm.dlt',
-  //   clientToken: 'ORDER_KAFKA_CLIENT',
-  // })
+  @KafkaRetry({
+    maxRetries: 2,
+    dltTopic: 'order.payment.successed.failed',
+    clientToken: 'ORDER_KAFKA_CLIENT',
+    dbToken: PrismaOrderService,
+  })
   handlePaymentSuccessed(data: ConfirmOrderDto) {
     return this.orderService.processPaymentSuccessed(data);
   }
 
   @EventPattern('payment.canceled')
-  // @KafkaRetry({
-  //   maxRetries: 2,
-  //   dltTopic: 'order.cancel.dlt',
-  //   clientToken: 'ORDER_KAFKA_CLIENT',
-  // })
+  @KafkaRetry({
+    maxRetries: 2,
+    dltTopic: 'order.payment.canceled.failed',
+    clientToken: 'ORDER_KAFKA_CLIENT',
+    dbToken: PrismaOrderService,
+  })
   handlePaymentCanceled(data: CancelOrderDto) {
     return this.orderService.processPaymentCanceled(data);
+  }
+
+  @EventPattern('payment.order.checkout.failed')
+  @KafkaRetry({
+    maxRetries: 2,
+    dltTopic: 'order.payment.order.checkout.failed.dlt',
+    clientToken: 'ORDER_KAFKA_CLIENT',
+    dbToken: PrismaOrderService,
+  })
+  handlePaymentOrderCheckoutFailed(data: OrderCheckoutEvent) {
+    return this.orderService.processPaymentOrderCheckoutFailed(data);
   }
 }
