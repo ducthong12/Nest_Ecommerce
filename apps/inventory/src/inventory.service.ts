@@ -5,6 +5,7 @@ import { RestockInventoryDto } from 'common/dto/inventory/restock-stock.dto';
 import { ReserveStockInventoryDto } from 'common/dto/inventory/reverse-stock.dto';
 import { RedisService } from '@app/redis';
 import { OrderCanceledEvent } from 'common/dto/order/order-canceled.event';
+import { OrderCheckoutDto } from 'common/dto/order/order-checkout.dto';
 
 @Injectable()
 export class InventoryService {
@@ -54,7 +55,7 @@ export class InventoryService {
 
       return result;
     } catch (error) {
-      throw new Error('Failed to restock inventory');
+      throw error;
     }
   }
 
@@ -79,26 +80,15 @@ export class InventoryService {
 
       return { success: true, failedProductIds };
     } catch (error) {
-      throw new Error('Failed to reserve stock in Database');
+      throw error;
     }
   }
 
-  async redisAddStock(data: { sku: string; quantity: number }) {
-    try {
-      await this.redisService.addStockAtomic({
-        sku: data.sku,
-        quantity: data.quantity,
-      });
-    } catch (error) {
-      throw new Error('Failed to add stock in Redis');
-    }
-  }
+  async processOrderCheckoutFailed(data: OrderCheckoutDto & { id: string }) {
+    const success = await this.redisService.releaseAtomic(data.items, data.id);
 
-  async processOrderCanceled(data: OrderCanceledEvent) {
-    try {
-      await this.redisService.releaseAtomic(data.items, data.id);
-    } catch (error) {
-      throw new Error('Failed to release stock in Redis');
+    if (!success) {
+      return { success: false };
     }
 
     try {
@@ -113,7 +103,41 @@ export class InventoryService {
 
       return { success: true };
     } catch (error) {
-      throw new Error('Failed to release stock in Database');
+      throw error;
+    }
+  }
+
+  async redisAddStock(data: { sku: string; quantity: number }) {
+    try {
+      await this.redisService.addStockAtomic({
+        sku: data.sku,
+        quantity: data.quantity,
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async processOrderCanceled(data: OrderCanceledEvent) {
+    try {
+      await this.redisService.releaseAtomic(data.items, data.id);
+    } catch (error) {
+      throw error;
+    }
+
+    try {
+      await this.prismaInventory.$transaction(async (tx) => {
+        for (const item of data.items) {
+          await tx.inventory.update({
+            where: { sku: item.sku },
+            data: { stockQuantity: { increment: item.quantity } },
+          });
+        }
+      });
+
+      return { success: true };
+    } catch (error) {
+      throw error;
     }
   }
 }

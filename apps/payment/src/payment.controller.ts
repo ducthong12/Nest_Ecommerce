@@ -10,13 +10,21 @@ import {
 import { PaymentSuccessDto } from 'common/dto/payment/payment-success.dto';
 import { PaymentCancelDto } from 'common/dto/payment/cancel-payment.dto';
 import { OrderCheckoutEvent } from 'common/dto/order/order-checkout.event';
+import { PrismaPaymentService } from '../prisma/prisma-payment.service';
+import { KafkaRetry } from '@common/decorators/kafka-retry.decorator';
 
 @Controller()
 export class PaymentController {
   constructor(private readonly paymentService: PaymentService) {}
 
   @EventPattern('order.checkout')
-  async handleOrderCreated(
+  @KafkaRetry({
+    maxRetries: 2,
+    dltTopic: 'payment.order.checkout.failed',
+    clientToken: 'PAYMENT_KAFKA_CLIENT',
+    dbToken: PrismaPaymentService,
+  })
+  async handleOrderCheckout(
     @Payload() message: OrderCheckoutEvent,
     @Ctx() context: KafkaContext,
   ) {

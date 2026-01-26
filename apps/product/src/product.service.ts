@@ -64,7 +64,7 @@ export class ProductService {
       { ...savedProduct.toObject(), brand_name, category_name },
     );
 
-    this.kafkaClient.emit('search.create_product', kafkaPayload);
+    this.kafkaClient.emit('product.created', kafkaPayload);
 
     return savedProduct;
   }
@@ -102,7 +102,7 @@ export class ProductService {
         { ...savedProduct.toObject(), brand_name, category_name },
       );
 
-      this.kafkaClient.emit('search.create_product', kafkaPayload);
+      this.kafkaClient.emit('product.created', kafkaPayload);
     }
 
     return { products: newProductArr as unknown as Product[] };
@@ -241,7 +241,7 @@ export class ProductService {
     }
   }
 
-  async processOrderCreated(data: OrderCheckoutEvent) {
+  async processOrderCheckout(data: OrderCheckoutEvent) {
     const result = [];
     const session = await this.connection.startSession();
 

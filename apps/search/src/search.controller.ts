@@ -20,12 +20,12 @@ export class SearchController {
     private readonly searchOrdersService: SearchOrdersService,
   ) {}
 
-  @EventPattern('search.create_product')
-  // @KafkaRetry({
-  //   maxRetries: 2,
-  //   dltTopic: 'search.create_product.dlt',
-  //   clientToken: 'SEARCH_KAFKA_CLIENT',
-  // })
+  @EventPattern('product.created')
+  @KafkaRetry({
+    maxRetries: 2,
+    dltTopic: 'search.product.created.failed',
+    clientToken: 'PRODUCT_KAFKA_CLIENT',
+  })
   async handleProductCreated(
     @Payload() message: any,
     @Ctx() context: KafkaContext,
@@ -33,7 +33,12 @@ export class SearchController {
     return await this.searchService.createProduct(message);
   }
 
-  @EventPattern('search.update_product')
+  @EventPattern('product.updated')
+  @KafkaRetry({
+    maxRetries: 2,
+    dltTopic: 'search.product.updated.failed',
+    clientToken: 'PRODUCT_KAFKA_CLIENT',
+  })
   async handleProductUpdated(
     @Payload() message: any,
     @Ctx() context: KafkaContext,
@@ -41,7 +46,12 @@ export class SearchController {
     return await this.searchService.updateProduct(message);
   }
 
-  @EventPattern('search.delete_product')
+  @EventPattern('product.deleted')
+  @KafkaRetry({
+    maxRetries: 2,
+    dltTopic: 'search.product.deleted.failed',
+    clientToken: 'PRODUCT_KAFKA_CLIENT',
+  })
   async handleProductDeleted(
     @Payload() message: any,
     @Ctx() context: KafkaContext,
@@ -65,11 +75,11 @@ export class SearchController {
   }
 
   @EventPattern('order.checkout')
-  // @KafkaRetry({
-  //   maxRetries: 2,
-  //   dltTopic: 'order.created.dlt',
-  //   clientToken: 'SEARCH_KAFKA_CLIENT',
-  // })
+  @KafkaRetry({
+    maxRetries: 2,
+    dltTopic: 'search.order.checkout.failed',
+    clientToken: 'ORDER_KAFKA_CLIENT',
+  })
   async handleOrderCreated(
     @Payload() message: OrderCheckoutEvent,
     @Ctx() context: KafkaContext,
@@ -78,11 +88,11 @@ export class SearchController {
   }
 
   @EventPattern('order.updated')
-  // @KafkaRetry({
-  //   maxRetries: 2,
-  //   dltTopic: 'order.updated.dlt',
-  //   clientToken: 'SEARCH_KAFKA_CLIENT',
-  // })
+  @KafkaRetry({
+    maxRetries: 2,
+    dltTopic: 'search.order.updated.failed',
+    clientToken: 'ORDER_KAFKA_CLIENT',
+  })
   async handleOrderUpdated(
     @Payload() message: any,
     @Ctx() context: KafkaContext,

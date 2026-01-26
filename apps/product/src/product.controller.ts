@@ -8,6 +8,8 @@ import { UpdateProductDto } from 'common/dto/product/update-product.dto';
 import { UpdatePriceDto } from 'common/dto/product/update-price.dto';
 import { OrderCanceledEvent } from 'common/dto/order/order-canceled.event';
 import { OrderCheckoutEvent } from 'common/dto/order/order-checkout.event';
+import { KafkaRetry } from '@common/decorators/kafka-retry.decorator';
+import { PrismaOrderService } from 'apps/order/prisma/prisma-order.service';
 
 @Controller()
 export class ProductController {
@@ -64,13 +66,25 @@ export class ProductController {
   }
 
   @EventPattern('order.canceled')
+  @KafkaRetry({
+    maxRetries: 2,
+    dltTopic: 'product.order.canceled.failed',
+    clientToken: 'PRODUCT_KAFKA_CLIENT',
+    dbToken: PrismaOrderService,
+  })
   async handleOrderCanceled(data: OrderCanceledEvent) {
     return await this.productService.processOrderCanceled(data);
   }
 
   @EventPattern('order.checkout')
-  async reserveProduct(data: OrderCheckoutEvent) {
-    return await this.productService.processOrderCreated(data);
+  @KafkaRetry({
+    maxRetries: 2,
+    dltTopic: 'product.order.checkout.failed',
+    clientToken: 'PRODUCT_KAFKA_CLIENT',
+    dbToken: PrismaOrderService,
+  })
+  async handleOrderCheckout(data: OrderCheckoutEvent) {
+    return await this.productService.processOrderCheckout(data);
   }
 
   private mapToProto(product: any) {

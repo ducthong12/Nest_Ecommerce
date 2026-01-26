@@ -53,6 +53,19 @@ export class KafkaRetryInterceptor implements NestInterceptor {
           payload.headers['x-retry-count'] = (retryCount + 1).toString();
           await lastValueFrom(kafkaClient.emit(topic, payload));
         } else {
+          const dbService = this.moduleRef.get(options.dbToken, {
+            strict: false,
+          });
+
+          if (dbService && dbService.outbox) {
+            await dbService.outbox.create({
+              data: {
+                topic: options.dltTopic,
+                payload: payload,
+                status: 'PENDING',
+              },
+            });
+          }
           payload.headers['error-log'] = err.message;
           await lastValueFrom(kafkaClient.emit(options.dltTopic, payload));
         }
