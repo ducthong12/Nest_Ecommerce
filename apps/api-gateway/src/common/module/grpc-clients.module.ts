@@ -14,7 +14,7 @@ import { join } from 'path';
         options: {
           package: NAME_SERVICE_GRPC.INVENTORY_PACKAGE,
           protoPath: join(__dirname, '/inventory.proto'),
-          url: `127.0.0.1:50054`,
+          url: process.env.INVENTORY_GRPC_URL,
         },
       },
       {
@@ -23,7 +23,7 @@ import { join } from 'path';
         options: {
           package: NAME_SERVICE_GRPC.ORDER_PACKAGE,
           protoPath: join(__dirname, '/order.proto'),
-          url: `127.0.0.1:50053`,
+          url: process.env.ORDER_GRPC_URL,
         },
       },
       {
@@ -32,7 +32,7 @@ import { join } from 'path';
         options: {
           package: NAME_SERVICE_GRPC.PAYMENT_PACKAGE,
           protoPath: join(__dirname, '/payment.proto'),
-          url: `127.0.0.1:50055`,
+          url: process.env.PAYMENT_GRPC_URL,
         },
       },
       {
@@ -41,7 +41,7 @@ import { join } from 'path';
         options: {
           package: NAME_SERVICE_GRPC.PRODUCT_PACKAGE,
           protoPath: join(__dirname, '/product.proto'),
-          url: `127.0.0.1:50052`,
+          url: process.env.PRODUCT_GRPC_URL,
         },
       },
       {
@@ -50,7 +50,7 @@ import { join } from 'path';
         options: {
           package: NAME_SERVICE_GRPC.SEARCH_PACKAGE,
           protoPath: join(__dirname, '/search.proto'),
-          url: `127.0.0.1:50056`,
+          url: process.env.SEARCH_GRPC_URL,
         },
       },
       {
@@ -59,7 +59,7 @@ import { join } from 'path';
         options: {
           package: NAME_SERVICE_GRPC.USER_PACKAGE,
           protoPath: join(__dirname, '/user.proto'),
-          url: `127.0.0.1:${process.env.USER_PORT_GRPC}`,
+          url: process.env.USER_GRPC_URL,
         },
       },
       {
@@ -68,7 +68,7 @@ import { join } from 'path';
         options: {
           package: NAME_SERVICE_GRPC.STORAGE_PACKAGE,
           protoPath: join(__dirname, '/storage.proto'),
-          url: `127.0.0.1:50057`,
+          url: process.env.STORAGE_GRPC_URL,
         },
       },
     ]),

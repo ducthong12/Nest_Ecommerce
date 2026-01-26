@@ -33,13 +33,6 @@ export class InventoryService {
             topic: 'product.restock',
             payload: data,
           },
-          {
-            topic: 'redis.addstock',
-            payload: {
-              sku: data.sku,
-              quantity: data.quantity,
-            },
-          },
         ];
 
         await tx.outbox.createMany({
@@ -119,6 +112,10 @@ export class InventoryService {
   }
 
   async processOrderCanceled(data: OrderCanceledEvent) {
+    if (!data.items || data.items.length === 0) {
+      return { success: true };
+    }
+
     try {
       await this.redisService.releaseAtomic(data.items, data.id);
     } catch (error) {

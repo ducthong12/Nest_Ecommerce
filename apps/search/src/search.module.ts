@@ -5,9 +5,19 @@ import { ElasticsearchModule } from '@nestjs/elasticsearch';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { Partitioners } from 'kafkajs';
 import { SearchOrdersService } from './searchOrders/searchOrders.service';
+import { TerminusModule } from '@nestjs/terminus';
+import { HealthController } from './health/health.controller';
+import { PrometheusModule } from '@willsoto/nestjs-prometheus';
 
 @Module({
   imports: [
+    TerminusModule,
+    PrometheusModule.register({
+      path: '/metrics',
+      defaultMetrics: {
+        enabled: true,
+      },
+    }),
     ElasticsearchModule.register({
       node: 'http://localhost:9200',
     }),
@@ -29,7 +39,7 @@ import { SearchOrdersService } from './searchOrders/searchOrders.service';
       },
     ]),
   ],
-  controllers: [SearchController],
+  controllers: [SearchController, HealthController],
   providers: [SearchService, SearchOrdersService],
 })
 export class SearchModule {}

@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { initTracing } from 'common/jaeger/tracing';
 initTracing('user-service');
 import { HttpAdapterHost, NestFactory } from '@nestjs/core';
@@ -15,12 +16,15 @@ async function bootstrap() {
     logger: WinstonModule.createLogger(createLoggerConfig('user-service')),
   });
 
+  // Enable graceful shutdown hooks
+  app.enableShutdownHooks();
+
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.GRPC,
     options: {
       package: NAME_SERVICE_GRPC.USER_PACKAGE,
-      protoPath: join(__dirname, '/user.proto'), // Đường dẫn đến file proto
-      url: `127.0.0.1:${process.env.USER_PORT_GRPC}`, // Lắng nghe trên port 50051
+      protoPath: join(__dirname, '/user.proto'),
+      url: process.env.USER_GRPC_URL,
     },
   });
 
@@ -31,12 +35,14 @@ async function bootstrap() {
   // Kích hoạt ValidationPipe toàn cục
   // app.useGlobalPipes();
 
-  await app.listen(5656);
+  await app.listen(process.env.USER_SERVICE_PORT);
 }
 
 bootstrap()
   .then(() => {
-    console.log('User Service Successfully Started');
+    console.log(
+      `User Service Successfully Started on port ${process.env.USER_SERVICE_PORT}`,
+    );
   })
   .catch((error) => {
     console.error('User Service Fail Started', error);

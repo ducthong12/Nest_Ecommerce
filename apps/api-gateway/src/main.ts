@@ -27,7 +27,9 @@ async function bootstrap() {
     logger: WinstonModule.createLogger(createLoggerConfig('api-gateway')),
   });
 
-  app.setGlobalPrefix('api');
+  app.setGlobalPrefix('api', {
+    exclude: ['metrics', 'health'],
+  });
 
   app.enableVersioning({
     type: VersioningType.URI,
@@ -61,12 +63,14 @@ async function bootstrap() {
     new ResponseInterceptor(),
   );
 
-  await app.listen(process.env.API_GATEWAY_PORT ?? 3000);
+  await app.listen(process.env.API_GATEWAY_PORT);
 }
 
 bootstrap()
   .then(() => {
-    console.log('API Gateway Successfully Started');
+    console.log(
+      `API Gateway Successfully Started on port ${process.env.API_GATEWAY_PORT}`,
+    );
   })
   .catch((err) => {
     console.error('Error starting API Gateway:', err);

@@ -7,12 +7,21 @@ import { BullmqModule } from '@app/bullmq';
 import { PaymentProcessor } from './payment.processor';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { Partitioners } from 'kafkajs';
+import { TerminusModule } from '@nestjs/terminus';
+import { PrometheusModule } from '@willsoto/nestjs-prometheus';
 
 @Module({
   imports: [
+    TerminusModule,
     BullmqModule,
     BullModule.registerQueue({
       name: 'payment-timeout-queue',
+    }),
+    PrometheusModule.register({
+      path: '/metrics',
+      defaultMetrics: {
+        enabled: true,
+      },
     }),
     ClientsModule.register([
       {

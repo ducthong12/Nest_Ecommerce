@@ -33,7 +33,7 @@ export class InventoryController {
   @EventPattern('order.canceled')
   @KafkaRetry({
     maxRetries: 2,
-    dltTopic: 'inventory.order.canceled.failed',
+    dltTopic: 'inventory.order.canceled.dlt',
     clientToken: 'INVENTORY_KAFKA_CLIENT',
     dbToken: PrismaInventoryService,
   })
@@ -58,15 +58,15 @@ export class InventoryController {
     await this.inventoryService.processOrderCheckoutFailed(message);
   }
 
-  @EventPattern('redis.addstock')
+  @EventPattern('product.restock')
   @KafkaRetry({
     maxRetries: 2,
-    dltTopic: 'inventory.redis.addstock.failed',
+    dltTopic: 'inventory.product.restock.failed',
     clientToken: 'INVENTORY_KAFKA_CLIENT',
     dbToken: PrismaInventoryService,
   })
   async handleRedisAddStock(
-    @Payload() message: { sku: string; quantity: number },
+    @Payload() message: RestockInventoryDto,
     @Ctx() context: KafkaContext,
   ) {
     await this.inventoryService.redisAddStock(message);

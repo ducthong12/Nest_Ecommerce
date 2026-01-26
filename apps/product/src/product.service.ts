@@ -12,7 +12,6 @@ import { Brand } from '../schemas/brand.schema';
 import { CreateCategoryDto } from 'common/dto/product/create-category.dto';
 import { ClientKafka } from '@nestjs/microservices';
 import { UpdateProductDto } from 'common/dto/product/update-product.dto';
-import { UpdateSnapShotProductDto } from 'common/dto/product/updateSnapshot-product.dto';
 import { UpdatePriceDto } from 'common/dto/product/update-price.dto';
 import { OrderCanceledEvent } from 'common/dto/order/order-canceled.event';
 import { OrderCheckoutEvent } from 'common/dto/order/order-checkout.event';
@@ -239,6 +238,21 @@ export class ProductService {
 
       this.kafkaClient.emit('search.update_product', kafkaPayload);
     }
+  }
+
+  async processProductRestock(data: { sku: string; quantity: number }) {
+    const session = await this.connection.startSession();
+
+    session.startTransaction();
+
+    const result = await this.productModel.findOneAndUpdate(
+      { 'variants.sku': data.sku },
+      { $inc: { 'variants.$.stockSnapshot': data.quantity } },
+      { session },
+    );
+
+    await session.commitTransaction();
+    await session.endSession();
   }
 
   async processOrderCheckout(data: OrderCheckoutEvent) {
