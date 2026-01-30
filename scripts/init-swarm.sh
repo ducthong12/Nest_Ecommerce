@@ -21,5 +21,13 @@ else
 fi
 
 # 2. Deploy Stack với biến môi trường
-# Lưu ý: GitHub Actions sẽ truyền PG_PASSWORD, REDIS_PASSWORD... vào đây
-docker stack deploy -c infrastructure/infrastructure.yml infra
+if [ -f "infrastructure.yml" ]; then
+    echo "Found file at Root!"
+    docker stack deploy -c infrastructure.yml infra
+elif [ -f "infrastructure/infrastructure.yml" ]; then
+    echo "Found file inside folder!"
+    docker stack deploy -c infrastructure/infrastructure.yml infra
+else
+    echo "❌ LỖI TO: Không tìm thấy file infrastructure.yml ở đâu cả!"
+    exit 1
+fi
