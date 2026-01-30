@@ -11,13 +11,9 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Create .env file
-        run: |
-          cat <<EOF > .env
-          REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
-          EOF
-
       - name: Deploy to Swarm
+        env:
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
         run: |
           chmod +x scripts/init-swarm.sh
           ./scripts/init-swarm.sh  # <--- Gọi file script chạy
