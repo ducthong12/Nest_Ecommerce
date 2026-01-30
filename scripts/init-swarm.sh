@@ -10,4 +10,4 @@ fi
 
 # 2. Deploy Stack với biến môi trường
 # Lưu ý: GitHub Actions sẽ truyền PG_PASSWORD, REDIS_PASSWORD... vào đây
-docker stack deploy -c infrastructure.yml infra
+docker stack deploy -c infrastructure/infrastructure.yml infra
