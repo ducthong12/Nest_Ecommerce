@@ -26,6 +26,11 @@ export class ResponseInterceptor<T> implements NestInterceptor<
     const ctx = context.switchToHttp();
     const response = ctx.getResponse<Response>();
     const statusCode = response.statusCode;
+    const req = ctx.getRequest<Request>();
+
+    if (req.url.includes('/health') || req.url.includes('/metrics')) {
+      return next.handle();
+    }
 
     return next.handle().pipe(
       map((data) => ({

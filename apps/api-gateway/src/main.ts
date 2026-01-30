@@ -2,33 +2,33 @@ import { initTracing } from 'common/jaeger/tracing';
 initTracing('api-gateway');
 import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { ApiGatewayModule } from './api-gateway.module';
-import { ValidationPipe, VersioningType } from '@nestjs/common';
+import { RequestMethod, ValidationPipe, VersioningType } from '@nestjs/common';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptor/response.interceptor';
-import { join } from 'path';
-import * as fs from 'fs';
 import { createLoggerConfig } from 'common/logger/winston.config';
 import { WinstonModule } from 'nest-winston';
 import { LoggingInterceptor } from 'common/interceptor/logging.interceptor';
 import { AllExceptionsFilter } from 'common/filters/all-exceptions.filter';
 
 async function bootstrap() {
-  const httpsOptions = {
-    key: fs.readFileSync(
-      join(__dirname, '../../../keys', 'app.test.local+3-key.pem'),
-    ),
-    cert: fs.readFileSync(
-      join(__dirname, '../../../keys', 'app.test.local+3.pem'),
-    ),
-  };
+  // const httpsOptions = {
+  //   key: fs.readFileSync(
+  //     join(__dirname, '../../../keys', 'app.test.local+3-key.pem'),
+  //   ),
+  //   cert: fs.readFileSync(
+  //     join(__dirname, '../../../keys', 'app.test.local+3.pem'),
+  //   ),
+  // };
 
   const app = await NestFactory.create(ApiGatewayModule, {
-    httpsOptions,
     logger: WinstonModule.createLogger(createLoggerConfig('api-gateway')),
   });
 
   app.setGlobalPrefix('api', {
-    exclude: ['metrics', 'health'],
+    exclude: [
+      { path: 'health', method: RequestMethod.GET },
+      { path: 'metrics', method: RequestMethod.GET },
+    ],
   });
 
   app.enableVersioning({

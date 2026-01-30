@@ -3,10 +3,14 @@ import { Global, Module } from '@nestjs/common';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { NAME_SERVICE_GRPC } from '@common/constants/port-grpc.constant';
 import { join } from 'path';
+import { ConfigModule } from '@nestjs/config';
 
 @Global()
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
     ClientsModule.register([
       {
         name: NAME_SERVICE_GRPC.INVENTORY_SERVICE,

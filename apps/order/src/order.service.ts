@@ -8,12 +8,19 @@ import { CancelOrderDto } from 'common/dto/order/cancel-order.dto';
 import { OrderCanceledEvent } from 'common/dto/order/order-canceled.event';
 import { CreateOrderDto } from 'common/dto/order/create-order.dto';
 import { UpdateOrderDto } from 'common/dto/order/update-order.dto';
+import { Counter } from 'prom-client';
+import { InjectMetric } from '@willsoto/nestjs-prometheus';
 @Injectable()
 export class OrderService {
-  constructor(private prismaOrder: PrismaOrderService) {}
+  constructor(
+    private prismaOrder: PrismaOrderService,
+    @InjectMetric('orders_processed_total')
+    private readonly orderProcessed: Counter<string>,
+  ) {}
 
   async orderCheckout(data: OrderCheckoutDto) {
     let orderId: string | null = null;
+    this.orderProcessed.inc({ method: 'order_checkout' });
 
     try {
       return await this.prismaOrder.$transaction(async (tx) => {
@@ -100,6 +107,8 @@ export class OrderService {
   }
 
   async updateOrder(data: UpdateOrderDto) {
+    this.orderProcessed.inc({ method: 'update_order' });
+
     try {
       if (data.items.length === 0) {
         this.removeOrder(data.id);
@@ -171,6 +180,8 @@ export class OrderService {
   }
 
   async removeOrder(id: string) {
+    this.orderProcessed.inc({ method: 'remove_order' });
+
     try {
       await this.prismaOrder.$transaction(async (tx) => {
         await tx.orderItem.deleteMany({
@@ -185,6 +196,8 @@ export class OrderService {
   }
 
   async syncOrder(data: CreateOrderDto | UpdateOrderDto) {
+    this.orderProcessed.inc({ method: 'sync_order' });
+
     try {
       const existingOrder = await this.prismaOrder.order.findFirst({
         where: {
@@ -212,6 +225,8 @@ export class OrderService {
   }
 
   async processPaymentCanceled(data: CancelOrderDto) {
+    this.orderProcessed.inc({ method: 'order_canceled' });
+
     try {
       return await this.prismaOrder.$transaction(async (tx) => {
         const order = await tx.order.update({
@@ -244,6 +259,8 @@ export class OrderService {
   }
 
   async processPaymentOrderCheckoutFailed(data: OrderCheckoutEvent) {
+    this.orderProcessed.inc({ method: 'order_checkout_failed' });
+
     try {
       return await this.prismaOrder.$transaction(async (tx) => {
         const order = await tx.order.update({
@@ -300,6 +317,8 @@ export class OrderService {
   }
 
   async processPaymentSuccessed(data: ConfirmOrderDto) {
+    this.orderProcessed.inc({ method: 'order_confirmed' });
+
     try {
       return await this.prismaOrder.$transaction(async (tx) => {
         const order = await tx.order.update({
