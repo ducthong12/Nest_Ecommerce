@@ -101,3 +101,12 @@ services:
     deploy:
       placement:
         constraints: [node.hostname == k8s-worker2]
+
+volumes:
+  redis_node0_data:
+  redis_node1_data:
+  redis_node2_data:
+
+networks:
+  DevOps-Network:
+    external: true
