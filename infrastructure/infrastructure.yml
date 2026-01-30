@@ -14,7 +14,7 @@ services:
         published: 6379
         mode: host
     networks:
-      - DevOps-Network
+      - Docker-Network
     deploy:
       placement:
         constraints: [node.hostname == k8s-master]
@@ -30,7 +30,7 @@ services:
     volumes:
       - redis_node1_data:/bitnami/redis/data
     networks:
-      - DevOps-Network
+      - Docker-Network
     deploy:
       placement:
         constraints: [node.hostname == k8s-worker1]
@@ -48,7 +48,7 @@ services:
     volumes:
       - redis_node2_data:/bitnami/redis/data
     networks:
-      - DevOps-Network
+      - Docker-Network
     deploy:
       placement:
         constraints: [node.hostname == k8s-worker2]
@@ -65,7 +65,7 @@ services:
       - REDIS_MASTER_SET=mymaster
       - REDIS_MASTER_PASSWORD=${REDIS_PASSWORD}
     networks:
-      - DevOps-Network
+      - Docker-Network
     deploy:
       placement:
         constraints: [node.hostname == k8s-master]
@@ -82,7 +82,7 @@ services:
       - REDIS_MASTER_SET=mymaster
       - REDIS_MASTER_PASSWORD=${REDIS_PASSWORD}
     networks:
-      - DevOps-Network
+      - Docker-Network
     deploy:
       placement:
         constraints: [node.hostname == k8s-worker1]
@@ -97,7 +97,7 @@ services:
       - REDIS_MASTER_SET=mymaster
       - REDIS_MASTER_PASSWORD=${REDIS_PASSWORD}
     networks:
-      - DevOps-Network
+      - Docker-Network
     deploy:
       placement:
         constraints: [node.hostname == k8s-worker2]
@@ -108,5 +108,5 @@ volumes:
   redis_node2_data:
 
 networks:
-  DevOps-Network:
+  Docker-Network:
     external: true
