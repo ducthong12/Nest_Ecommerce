@@ -18,6 +18,10 @@ export class LoggingInterceptor implements NestInterceptor {
     const url = req.url;
     const now = Date.now();
 
+    if (req.url.includes('/health') || req.url.includes('/metrics')) {
+      return next.handle();
+    }
+
     return next.handle().pipe(
       tap(() => {
         const duration = Date.now() - now;

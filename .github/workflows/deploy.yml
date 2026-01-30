@@ -1,94 +1,111 @@
-name: CI/CD Hybrid 3 Apps
+name: CI/CD
 
 on:
   push:
     branches: ['production']
 
 jobs:
-  # JOB 1: BUILD & PUSH (Chạy trên Cloud Ubuntu của GitHub)
-  build-and-push:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        # Danh sách 3 app cần build (tên này phải trùng với tên folder trong source code)
-        service: [api-gateway, inventory, order, product, user]
+  deploy-infra:
+    runs-on: self-hosted
     steps:
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Login Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      # Build và Push từng service theo danh sách matrix ở trên
-      - name: Build and push ${{ matrix.service }}
-        uses: docker/build-push-action@v5
-        with:
-          context: . # Quan trọng: Context là root để thấy file chung
-          file: ./Dockerfile # Dùng Dockerfile chung
-          push: true
-          # Đặt tên ảnh theo format: username/tên-service:latest
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest
-          # Truyền biến APP_NAME vào để Dockerfile biết đang build app nào
-          build-args: |
-            APP_NAME=${{ matrix.service }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  # JOB 2: DEPLOY (Chạy trên máy EC2 của bạn - Self-hosted)
-  deploy:
-    needs: build-and-push
-    runs-on: self-hosted # <--- Chạy trực tiếp trên EC2
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        # Bước này sẽ tải file docker-compose.yml mới nhất về máy EC2
-
-      - name: Deploy 3 Apps
+      - name: Create .env file
         run: |
           cat <<EOF > .env
-          DOCKER_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
-          DATABASE_URL_USER="${{ secrets.DATABASE_URL_USER }}"
-          DATABASE_URL_INVENTORY="${{ secrets.DATABASE_URL_INVENTORY }}"
-          DATABASE_URL_ORDER="${{ secrets.DATABASE_URL_ORDER }}"
-          REDIS_HOST="${{ secrets.REDIS_HOST }}"
-          MONGO_URI="${{ secrets.MONGO_URI }}"
-
-          # AWS Configuration
-          AWS_BUCKET_ACCESS_KEY="${{ secrets.AWS_BUCKET_ACCESS_KEY }}"
-          AWS_BUCKET_NAME="${{ secrets.AWS_BUCKET_NAME }}"
-          AWS_BUCKET_SECRET_KEY="${{ secrets.AWS_BUCKET_SECRET_KEY }}"
-          AWS_REGION_ID="${{ secrets.AWS_REGION_ID }}"
-
-          # Cloudfront (Cẩn thận với Private Key nhiều dòng)
-          AWS_CLOUDFRONT_KEY_PAIR_ID="${{ secrets.AWS_CLOUDFRONT_KEY_PAIR_ID }}"
-          AWS_CLOUDFRONT_PRIVATE_KEY="${{ secrets.AWS_CLOUDFRONT_PRIVATE_KEY }}"
-          AWS_CLOUDFRONT_S3_DOMAIN="${{ secrets.AWS_CLOUDFRONT_S3_DOMAIN }}"
-
-          # Ports
-          API_GATEWAY_PORT=${{ secrets.API_GATEWAY_PORT }}
-          STORAGE_SERVICE_PORT=${{ secrets.STORAGE_SERVICE_PORT }}
-          ANALYTICS_SERVICE_PORT=${{ secrets.ANALYTICS_SERVICE_PORT }}
-          USER_PORT_GRPC=${{ secrets.USER_PORT_GRPC }}
-          PRODUCT_PORT_GRPC=${{ secrets.PRODUCT_PORT_GRPC }}
-          ORDER_PORT_GRPC=${{ secrets.ORDER_PORT_GRPC }}
-          INVENTORY_PORT_GRPC=${{ secrets.INVENTORY_PORT_GRPC }}
+          REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
           EOF
 
-          # 2. Pull images (Tải cả 3 ảnh api-gateway, analytics, storage về)
-          # Vì trong docker-compose.yml bạn đã khai báo 3 service này
-          docker compose pull
+      - name: Deploy to Swarm
+        run: |
+          chmod +x scripts/init-swarm.sh
+          ./scripts/init-swarm.sh  # <--- Gọi file script chạy
 
-          # 3. Khởi động lại hệ thống
-          # -d: chạy ngầm
-          # --remove-orphans: xóa các container rác không còn trong file config
-          docker compose up -d --remove-orphans
+  # # JOB 1: BUILD & PUSH (Chạy trên Cloud Ubuntu của GitHub)
+  # build-and-push:
+  #   runs-on: ubuntu-latest
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       # Danh sách 3 app cần build (tên này phải trùng với tên folder trong source code)
+  #       service: [api-gateway, inventory, order, product, user]
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
 
-          # 4. Dọn dẹp image cũ để giải phóng ổ cứng
-          docker system prune -f
+  #     - name: Login Docker Hub
+  #       uses: docker/login-action@v3
+  #       with:
+  #         username: ${{ secrets.DOCKERHUB_USERNAME }}
+  #         password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+  #     - name: Set up Docker Buildx
+  #       uses: docker/setup-buildx-action@v3
+
+  #     # Build và Push từng service theo danh sách matrix ở trên
+  #     - name: Build and push ${{ matrix.service }}
+  #       uses: docker/build-push-action@v5
+  #       with:
+  #         context: . # Quan trọng: Context là root để thấy file chung
+  #         file: ./Dockerfile # Dùng Dockerfile chung
+  #         push: true
+  #         # Đặt tên ảnh theo format: username/tên-service:latest
+  #         tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest
+  #         # Truyền biến APP_NAME vào để Dockerfile biết đang build app nào
+  #         build-args: |
+  #           APP_NAME=${{ matrix.service }}
+  #         cache-from: type=gha
+  #         cache-to: type=gha,mode=max
+
+  # # JOB 2: DEPLOY (Chạy trên máy EC2 của bạn - Self-hosted)
+  # deploy:
+  #   needs: build-and-push
+  #   runs-on: self-hosted # <--- Chạy trực tiếp trên EC2
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+  #       # Bước này sẽ tải file docker-compose.yml mới nhất về máy EC2
+
+  #     - name: Deploy 3 Apps
+  #       run: |
+  #         cat <<EOF > .env
+  #         DOCKER_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
+  #         DATABASE_URL_USER="${{ secrets.DATABASE_URL_USER }}"
+  #         DATABASE_URL_INVENTORY="${{ secrets.DATABASE_URL_INVENTORY }}"
+  #         DATABASE_URL_ORDER="${{ secrets.DATABASE_URL_ORDER }}"
+  #         REDIS_HOST="${{ secrets.REDIS_HOST }}"
+  #         MONGO_URI="${{ secrets.MONGO_URI }}"
+
+  #         # AWS Configuration
+  #         AWS_BUCKET_ACCESS_KEY="${{ secrets.AWS_BUCKET_ACCESS_KEY }}"
+  #         AWS_BUCKET_NAME="${{ secrets.AWS_BUCKET_NAME }}"
+  #         AWS_BUCKET_SECRET_KEY="${{ secrets.AWS_BUCKET_SECRET_KEY }}"
+  #         AWS_REGION_ID="${{ secrets.AWS_REGION_ID }}"
+
+  #         # Cloudfront (Cẩn thận với Private Key nhiều dòng)
+  #         AWS_CLOUDFRONT_KEY_PAIR_ID="${{ secrets.AWS_CLOUDFRONT_KEY_PAIR_ID }}"
+  #         AWS_CLOUDFRONT_PRIVATE_KEY="${{ secrets.AWS_CLOUDFRONT_PRIVATE_KEY }}"
+  #         AWS_CLOUDFRONT_S3_DOMAIN="${{ secrets.AWS_CLOUDFRONT_S3_DOMAIN }}"
+
+  #         # Ports
+  #         API_GATEWAY_PORT=${{ secrets.API_GATEWAY_PORT }}
+  #         STORAGE_SERVICE_PORT=${{ secrets.STORAGE_SERVICE_PORT }}
+  #         ANALYTICS_SERVICE_PORT=${{ secrets.ANALYTICS_SERVICE_PORT }}
+  #         USER_PORT_GRPC=${{ secrets.USER_PORT_GRPC }}
+  #         PRODUCT_PORT_GRPC=${{ secrets.PRODUCT_PORT_GRPC }}
+  #         ORDER_PORT_GRPC=${{ secrets.ORDER_PORT_GRPC }}
+  #         INVENTORY_PORT_GRPC=${{ secrets.INVENTORY_PORT_GRPC }}
+  #         EOF
+
+  #         # 2. Pull images (Tải cả 3 ảnh api-gateway, analytics, storage về)
+  #         # Vì trong docker-compose.yml bạn đã khai báo 3 service này
+  #         docker compose pull
+
+  #         # 3. Khởi động lại hệ thống
+  #         # -d: chạy ngầm
+  #         # --remove-orphans: xóa các container rác không còn trong file config
+  #         docker compose up -d --remove-orphans
+
+  #         # 4. Dọn dẹp image cũ để giải phóng ổ cứng
+  #         docker system prune -f

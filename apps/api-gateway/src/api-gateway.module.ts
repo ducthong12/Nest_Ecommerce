@@ -14,17 +14,15 @@ import { PaymentModule } from './payment/payment.module';
 import { GrpcClientsModule } from './common/module/grpc-clients.module';
 import { ConfigModule } from '@nestjs/config';
 import { PrometheusModule } from '@willsoto/nestjs-prometheus';
+import { TerminusModule } from '@nestjs/terminus';
+import { HealthController } from './health/health.controller';
+import { MetricsController } from '../metrics/metrics.controller';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-    }),
+    TerminusModule,
     PrometheusModule.register({
-      path: '/metrics',
-      defaultMetrics: {
-        enabled: true,
-      },
+      controller: MetricsController,
     }),
     ThrottlerModule.forRoot([
       {
@@ -41,7 +39,7 @@ import { PrometheusModule } from '@willsoto/nestjs-prometheus';
     PaymentModule,
     StorageModule,
   ],
-  controllers: [ApiGatewayController],
+  controllers: [ApiGatewayController, HealthController],
   providers: [
     ApiGatewayService,
     {

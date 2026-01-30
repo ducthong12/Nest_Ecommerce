@@ -7,7 +7,10 @@ import { PrismaOrderService } from '../prisma/prisma-order.service';
 import { Partitioners } from 'kafkajs';
 import { TerminusModule } from '@nestjs/terminus';
 import { HealthController } from './health/health.controller';
-import { PrometheusModule } from '@willsoto/nestjs-prometheus';
+import {
+  makeCounterProvider,
+  PrometheusModule,
+} from '@willsoto/nestjs-prometheus';
 
 @Module({
   imports: [
@@ -38,6 +41,14 @@ import { PrometheusModule } from '@willsoto/nestjs-prometheus';
     ]),
   ],
   controllers: [OrderController, HealthController],
-  providers: [OrderService, PrismaOrderService],
+  providers: [
+    OrderService,
+    PrismaOrderService,
+    makeCounterProvider({
+      name: 'orders_processed_total',
+      help: 'Total number of orders processed',
+      labelNames: ['method'],
+    }),
+  ],
 })
 export class OrderModule {}

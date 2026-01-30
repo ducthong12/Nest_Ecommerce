@@ -12,6 +12,18 @@ import { WinstonModule } from 'nest-winston';
 import { LoggingInterceptor } from 'common/interceptor/logging.interceptor';
 import { AllExceptionsFilter } from 'common/filters/all-exceptions.filter';
 
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  process.exit(1);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
+});
+
 async function bootstrap() {
   const app = await NestFactory.create(OrderModule, {
     logger: WinstonModule.createLogger(createLoggerConfig('order-service')),
@@ -49,7 +61,7 @@ async function bootstrap() {
   const httpAdapter = app.get(HttpAdapterHost);
   app.useGlobalInterceptors(new LoggingInterceptor());
   app.useGlobalFilters(new AllExceptionsFilter(httpAdapter));
-  app.enableCors();
+  // app.enableCors();
 
   await app.startAllMicroservices();
   await app.listen(process.env.ORDER_SERVICE_PORT);
@@ -62,5 +74,7 @@ bootstrap()
     );
   })
   .catch((error) => {
-    console.error('Order Service Fail Started', error);
+    console.error('Order Service Failed to Start:', error);
+    console.error('Error Stack:', error.stack);
+    process.exit(1);
   });
