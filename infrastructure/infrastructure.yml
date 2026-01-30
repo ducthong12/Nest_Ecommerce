@@ -3,6 +3,7 @@ version: '3.8'
 services:
   redis-node-0:
     image: bitnami/redis:latest
+    user: root
     environment:
       - REDIS_REPLICATION_MODE=master
       - REDIS_PASSWORD=${REDIS_PASSWORD}
@@ -21,6 +22,7 @@ services:
 
   redis-node-1:
     image: bitnami/redis:latest
+    user: root
     environment:
       - REDIS_REPLICATION_MODE=slave
       - REDIS_MASTER_HOST=redis-node-0
@@ -39,6 +41,7 @@ services:
 
   redis-node-2:
     image: bitnami/redis:latest
+    user: root
     environment:
       - REDIS_REPLICATION_MODE=slave
       - REDIS_MASTER_HOST=redis-node-0
@@ -57,6 +60,7 @@ services:
 
   redis-sentinel-0:
     image: bitnami/redis-sentinel:latest
+    user: root
     environment:
       - REDIS_SENTINEL_DOWN_AFTER_MILLISECONDS=5000
       - REDIS_SENTINEL_FAILOVER_TIMEOUT=10000
@@ -74,6 +78,7 @@ services:
 
   redis-sentinel-1:
     image: bitnami/redis-sentinel:latest
+    user: root
     environment:
       - REDIS_SENTINEL_DOWN_AFTER_MILLISECONDS=5000
       - REDIS_SENTINEL_FAILOVER_TIMEOUT=10000
@@ -89,6 +94,7 @@ services:
 
   redis-sentinel-2:
     image: bitnami/redis-sentinel:latest
+    user: root
     environment:
       - REDIS_SENTINEL_DOWN_AFTER_MILLISECONDS=5000
       - REDIS_SENTINEL_FAILOVER_TIMEOUT=10000
