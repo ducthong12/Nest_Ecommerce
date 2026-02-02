@@ -132,4 +132,4 @@ networks:
 
 configs:
   haproxy_config:
-    file: ./haproxy/haproxy.cfg
+    file: ./infrastructure/haproxy/haproxy.cfg
