@@ -27,10 +27,6 @@ services:
       - REDIS_AOF_ENABLED=yes
     volumes:
       - redis_node0_data:/bitnami/redis/data
-    ports:
-      - target: 6379
-        published: 6379
-        mode: host
     networks:
       - Docker-Network
     deploy:
