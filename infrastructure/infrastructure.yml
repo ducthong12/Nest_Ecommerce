@@ -1,6 +1,23 @@
 version: '3.8'
 
 services:
+  haproxy:
+    image: haproxy:latest
+    volumes:
+      # Map file config từ máy vào container
+      - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    ports:
+      # Mở cổng 6379 của HAProxy ra ngoài (Host)
+      # Đây là cổng DUY NHẤT bạn cần quan tâm từ giờ
+      - target: 6379
+        published: 6379
+        mode: host
+    networks:
+      - Docker-Network
+    deploy:
+      placement:
+        constraints: [node.hostname == k8s-master]
+
   redis-node-0:
     image: bitnami/redis:latest
     user: root
