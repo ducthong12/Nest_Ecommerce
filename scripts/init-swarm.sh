@@ -43,6 +43,6 @@ fi
 
 # Lệnh deploy chính thức
 # --prune: Tự động xóa các service cũ không còn dùng (Clean rác)
-docker stack deploy -c $FILE_PATH infra --prune
+sudo -E docker stack deploy -c $FILE_PATH infra --prune
 
 echo "✅ Deploy command sent!"

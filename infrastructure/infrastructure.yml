@@ -122,10 +122,72 @@ services:
       placement:
         constraints: [node.hostname == k8s-worker2]
 
+  mongo-node-0:
+    image: bitnami/mongodb:latest
+    environment:
+      - MONGODB_REPLICA_SET_MODE=primary
+      - MONGODB_REPLICA_SET_NAME=rs0
+      - MONGODB_PORT_NUMBER=27017
+      - MONGODB_INITIAL_PRIMARY_HOST=mongo-node-0
+      - MONGODB_INITIAL_PRIMARY_PORT_NUMBER=27017
+      - MONGODB_ADVERTISED_HOSTNAME=mongo-node-0
+      - MONGODB_ROOT_PASSWORD=12345678
+      - MONGODB_REPLICA_SET_KEY=12345678
+    volumes:
+      - mongo_node0_data:/bitnami/mongodb
+    networks:
+      - Docker-Network
+    deploy:
+      placement:
+        constraints: [node.hostname == k8s-master]
+
+  mongo-node-1:
+    image: bitnami/mongodb:latest
+    environment:
+      - MONGODB_REPLICA_SET_MODE=secondary
+      - MONGODB_REPLICA_SET_NAME=rs0
+      - MONGODB_INITIAL_PRIMARY_HOST=mongo-node-0
+      - MONGODB_INITIAL_PRIMARY_PORT_NUMBER=27017
+      - MONGODB_ADVERTISED_HOSTNAME=mongo-node-1
+      - MONGODB_ROOT_PASSWORD=12345678
+      - MONGODB_REPLICA_SET_KEY=12345678
+    volumes:
+      - mongo_node1_data:/bitnami/mongodb
+    networks:
+      - Docker-Network
+    depends_on:
+      - mongo-node-0
+    deploy:
+      placement:
+        constraints: [node.hostname == k8s-worker1]
+
+  mongo-node-2:
+    image: bitnami/mongodb:latest
+    environment:
+      - MONGODB_REPLICA_SET_MODE=secondary
+      - MONGODB_REPLICA_SET_NAME=rs0
+      - MONGODB_INITIAL_PRIMARY_HOST=mongo-node-0
+      - MONGODB_INITIAL_PRIMARY_PORT_NUMBER=27017
+      - MONGODB_ADVERTISED_HOSTNAME=mongo-node-2
+      - MONGODB_ROOT_PASSWORD=12345678
+      - MONGODB_REPLICA_SET_KEY=12345678
+    volumes:
+      - mongo_node2_data:/bitnami/mongodb
+    networks:
+      - Docker-Network
+    depends_on:
+      - mongo-node-0
+    deploy:
+      placement:
+        constraints: [node.hostname == k8s-worker2]
+
 volumes:
   redis_node0_data:
   redis_node1_data:
   redis_node2_data:
+  mongo_node0_data:
+  mongo_node1_data:
+  mongo_node2_data:
 
 networks:
   Docker-Network:
