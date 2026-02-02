@@ -28,7 +28,6 @@ services:
       - REDIS_AOF_ENABLED=yes
     volumes:
       - redis_node0_data:/bitnami/redis/data
-    command: /opt/bitnami/scripts/redis/run.sh --protected-mode no
     networks:
       - Docker-Network
     deploy:
@@ -46,7 +45,6 @@ services:
       - REDIS_PASSWORD=${REDIS_PASSWORD}
     volumes:
       - redis_node1_data:/bitnami/redis/data
-    command: /opt/bitnami/scripts/redis/run.sh --protected-mode no
     networks:
       - Docker-Network
     deploy:
@@ -66,7 +64,6 @@ services:
       - REDIS_PASSWORD=${REDIS_PASSWORD}
     volumes:
       - redis_node2_data:/bitnami/redis/data
-    command: /opt/bitnami/scripts/redis/run.sh --protected-mode no
     networks:
       - Docker-Network
     deploy:
