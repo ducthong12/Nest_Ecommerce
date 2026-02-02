@@ -25,6 +25,12 @@ fi
 # Biến REDIS_PASSWORD đã được GitHub Actions nạp vào từ bước trước
 echo "🚀 Deploying Stack with Redis Password..."
 
+if [ -f "haproxy/haproxy.cfg" ]; then
+    echo "🔧 Fixing HAProxy config EOF..."
+    # sed -i -e '$a\' : Append a newline at the last line
+    sed -i -e '$a\' haproxy/haproxy.cfg
+fi
+
 # Kiểm tra xem file nằm ở đâu (đề phòng runner đứng sai chỗ)
 if [ -f "infrastructure.yml" ]; then
     FILE_PATH="infrastructure.yml"
