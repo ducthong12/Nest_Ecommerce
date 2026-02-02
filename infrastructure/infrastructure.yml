@@ -124,6 +124,7 @@ services:
 
   mongo-node-0:
     image: bitnami/mongodb:4.4.29-debian-11-r0
+    user: root
     environment:
       - MONGODB_REPLICA_SET_MODE=primary
       - MONGODB_REPLICA_SET_NAME=rs0
@@ -143,6 +144,7 @@ services:
 
   mongo-node-1:
     image: bitnami/mongodb:4.4.29-debian-11-r0
+    user: root
     environment:
       - MONGODB_REPLICA_SET_MODE=secondary
       - MONGODB_REPLICA_SET_NAME=rs0
@@ -163,6 +165,7 @@ services:
 
   mongo-node-2:
     image: bitnami/mongodb:4.4.29-debian-11-r0
+    user: root
     environment:
       - MONGODB_REPLICA_SET_MODE=secondary
       - MONGODB_REPLICA_SET_NAME=rs0
