@@ -1,33 +1,42 @@
 #!/bin/bash
 
-# 1. Tạo MongoDB Keyfile (Nếu chưa có)
+# 1. In ra đường dẫn hiện tại để debug (nếu cần)
+echo "📂 Current directory: $(pwd)"
+ls -la
+
+# 2. Tạo Mạng Docker (Nếu chưa có)
+NETWORK_NAME="Docker-Network"
+if ! docker network ls | grep -q "$NETWORK_NAME"; then
+    echo "🌐 Creating Network: $NETWORK_NAME..."
+    docker network create --driver overlay --attachable "$NETWORK_NAME"
+else
+    echo "✅ Network $NETWORK_NAME already exists."
+fi
+
+# 3. Tạo Secret cho Mongo (Nếu cần)
 if ! docker secret ls | grep -q mongo_key_secret; then
-    echo "Creating Mongo Keyfile..."
+    echo "🔑 Creating Mongo Keyfile..."
     openssl rand -base64 756 > mongo-keyfile
     docker secret create mongo_key_secret mongo-keyfile
     rm mongo-keyfile
 fi
 
-# Ví dụ đổi tên thành: Docker-Network
-NETWORK_NAME="Docker-Network"  
+# 4. DEPLOY STACK
+# Biến REDIS_PASSWORD đã được GitHub Actions nạp vào từ bước trước
+echo "🚀 Deploying Stack with Redis Password..."
 
-# Kiểm tra xem mạng đã có chưa
-if ! docker network ls | grep -q "$NETWORK_NAME"; then
-    echo "Creating Network: $NETWORK_NAME..."
-    # Tạo mạng với tên mới
-    docker network create --driver overlay --attachable "$NETWORK_NAME"
-else
-    echo "Network $NETWORK_NAME already exists."
-fi
-
-# 2. Deploy Stack với biến môi trường
+# Kiểm tra xem file nằm ở đâu (đề phòng runner đứng sai chỗ)
 if [ -f "infrastructure.yml" ]; then
-    echo "Found file at Root!"
-    docker stack deploy -c infrastructure.yml infra
+    FILE_PATH="infrastructure.yml"
 elif [ -f "infrastructure/infrastructure.yml" ]; then
-    echo "Found file inside folder!"
-    docker stack deploy -c infrastructure/infrastructure.yml infra
+    FILE_PATH="infrastructure/infrastructure.yml"
 else
-    echo "❌ LỖI TO: Không tìm thấy file infrastructure.yml ở đâu cả!"
+    echo "❌ ERROR: Không tìm thấy file infrastructure.yml"
     exit 1
 fi
+
+# Lệnh deploy chính thức
+# --prune: Tự động xóa các service cũ không còn dùng (Clean rác)
+docker stack deploy -c $FILE_PATH infra --prune
+
+echo "✅ Deploy command sent!"
