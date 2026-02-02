@@ -7,10 +7,11 @@ services:
       - source: haproxy_config
         target: /usr/local/etc/haproxy/haproxy.cfg
     ports:
-      # Mở cổng 6379 của HAProxy ra ngoài (Host)
-      # Đây là cổng DUY NHẤT bạn cần quan tâm từ giờ
       - target: 6379
         published: 6379
+        mode: host
+      - target: 8404
+        published: 8404
         mode: host
     networks:
       - Docker-Network
