@@ -3,9 +3,9 @@ version: '3.8'
 services:
   haproxy:
     image: haproxy:latest
-    volumes:
-      # Map file config từ máy vào container
-      - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    configs:
+      - source: haproxy_config
+        target: /usr/local/etc/haproxy/haproxy.cfg
     ports:
       # Mở cổng 6379 của HAProxy ra ngoài (Host)
       # Đây là cổng DUY NHẤT bạn cần quan tâm từ giờ
