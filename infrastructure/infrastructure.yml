@@ -123,7 +123,7 @@ services:
         constraints: [node.hostname == k8s-worker2]
 
   mongo-node-0:
-    image: bitnami/mongodb:latest
+    image: bitnami/mongodb:4.4.29-debian-11-r0
     environment:
       - MONGODB_REPLICA_SET_MODE=primary
       - MONGODB_REPLICA_SET_NAME=rs0
@@ -142,7 +142,7 @@ services:
         constraints: [node.hostname == k8s-master]
 
   mongo-node-1:
-    image: bitnami/mongodb:latest
+    image: bitnami/mongodb:4.4.29-debian-11-r0
     environment:
       - MONGODB_REPLICA_SET_MODE=secondary
       - MONGODB_REPLICA_SET_NAME=rs0
@@ -162,7 +162,7 @@ services:
         constraints: [node.hostname == k8s-worker1]
 
   mongo-node-2:
-    image: bitnami/mongodb:latest
+    image: bitnami/mongodb:4.4.29-debian-11-r0
     environment:
       - MONGODB_REPLICA_SET_MODE=secondary
       - MONGODB_REPLICA_SET_NAME=rs0
