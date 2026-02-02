@@ -24,7 +24,7 @@ services:
     user: root
     environment:
       - REDIS_REPLICATION_MODE=master
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_PASSWORD=12345678
       - REDIS_AOF_ENABLED=yes
     volumes:
       - redis_node0_data:/bitnami/redis/data
@@ -41,8 +41,8 @@ services:
       - REDIS_REPLICATION_MODE=slave
       - REDIS_MASTER_HOST=redis-node-0
       - REDIS_MASTER_PORT_NUMBER=6379
-      - REDIS_MASTER_PASSWORD=${REDIS_PASSWORD}
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_MASTER_PASSWORD=12345678
+      - REDIS_PASSWORD=12345678
     volumes:
       - redis_node1_data:/bitnami/redis/data
     networks:
@@ -60,8 +60,8 @@ services:
       - REDIS_REPLICATION_MODE=slave
       - REDIS_MASTER_HOST=redis-node-0
       - REDIS_MASTER_PORT_NUMBER=6379
-      - REDIS_MASTER_PASSWORD=${REDIS_PASSWORD}
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_MASTER_PASSWORD=12345678
+      - REDIS_PASSWORD=12345678
     volumes:
       - redis_node2_data:/bitnami/redis/data
     networks:
@@ -81,7 +81,7 @@ services:
       - REDIS_MASTER_HOST=redis-node-0
       - REDIS_MASTER_PORT_NUMBER=6379
       - REDIS_MASTER_SET=mymaster
-      - REDIS_MASTER_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_MASTER_PASSWORD=12345678
     networks:
       - Docker-Network
     deploy:
@@ -99,7 +99,7 @@ services:
       - REDIS_MASTER_HOST=redis-node-0
       - REDIS_MASTER_PORT_NUMBER=6379
       - REDIS_MASTER_SET=mymaster
-      - REDIS_MASTER_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_MASTER_PASSWORD=12345678
     networks:
       - Docker-Network
     deploy:
@@ -115,7 +115,7 @@ services:
       - REDIS_MASTER_HOST=redis-node-0
       - REDIS_MASTER_PORT_NUMBER=6379
       - REDIS_MASTER_SET=mymaster
-      - REDIS_MASTER_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_MASTER_PASSWORD=12345678
     networks:
       - Docker-Network
     deploy:
