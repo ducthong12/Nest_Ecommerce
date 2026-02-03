@@ -209,3 +209,5 @@ networks:
 configs:
   haproxy_config:
     file: ./haproxy/haproxy.cfg
+  mongo_key_v1:
+    external: true
