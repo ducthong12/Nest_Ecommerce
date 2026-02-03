@@ -160,7 +160,7 @@ services:
   pg-master:
     image: bitnami/postgresql:14
     ports:
-      - '5432:5432'
+      - '5433:5432'
     environment:
       - POSTGRESQL_USERNAME=postgres
       - POSTGRESQL_PASSWORD=12345678
