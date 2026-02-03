@@ -125,9 +125,6 @@ services:
   mongo-node-0:
     image: mongo:4.4
     command: ['mongod', '--replSet', 'rs0', '--bind_ip_all']
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=admin
-      - MONGO_INITDB_ROOT_PASSWORD=12345678
     volumes:
       - mongo_node0_data:/data/db
     networks:
@@ -139,9 +136,6 @@ services:
   mongo-node-1:
     image: mongo:4.4
     command: ['mongod', '--replSet', 'rs0', '--bind_ip_all']
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=admin
-      - MONGO_INITDB_ROOT_PASSWORD=12345678
     volumes:
       - mongo_node1_data:/data/db
     networks:
@@ -153,9 +147,6 @@ services:
   mongo-node-2:
     image: mongo:4.4
     command: ['mongod', '--replSet', 'rs0', '--bind_ip_all']
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=admin
-      - MONGO_INITDB_ROOT_PASSWORD=12345678
     volumes:
       - mongo_node2_data:/data/db
     networks:
