@@ -158,7 +158,7 @@ services:
         constraints: [node.hostname == k8s-worker2]
 
   pg-master:
-    image: bitnami/postgresql:14
+    image: bitnami/postgresql:latest
     ports:
       - '5433:5432'
     environment:
@@ -179,7 +179,7 @@ services:
         constraints: [node.hostname == k8s-master]
 
   pg-slave1:
-    image: bitnami/postgresql:14
+    image: bitnami/postgresql:latest
     environment:
       - POSTGRESQL_PASSWORD=12345678
       - POSTGRESQL_REPLICATION_MODE=slave
@@ -196,7 +196,7 @@ services:
         constraints: [node.hostname == k8s-worker1]
 
   pg-slave2:
-    image: bitnami/postgresql:14
+    image: bitnami/postgresql:latest
     environment:
       - POSTGRESQL_PASSWORD=12345678
       - POSTGRESQL_REPLICATION_MODE=slave
