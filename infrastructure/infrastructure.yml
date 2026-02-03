@@ -124,12 +124,22 @@ services:
 
   mongo-node-0:
     image: mongo:4.4
-    command: ['mongod', '--replSet', 'rs0', '--bind_ip_all']
+    command: >
+      mongod --replSet rs0 
+      --bind_ip_all 
+      --keyFile /mongo-keyfile
+      --auth
     environment:
       - MONGO_INITDB_ROOT_USERNAME=admin
       - MONGO_INITDB_ROOT_PASSWORD=12345678
     volumes:
       - mongo_node0_data:/data/db
+    configs:
+      - source: mongo_key_v1
+        target: /mongo-keyfile
+        uid: '999'
+        gid: '999'
+        mode: 0400
     networks:
       - Docker-Network
     deploy:
@@ -138,12 +148,22 @@ services:
 
   mongo-node-1:
     image: mongo:4.4
-    command: ['mongod', '--replSet', 'rs0', '--bind_ip_all']
+    command: >
+      mongod --replSet rs0 
+      --bind_ip_all 
+      --keyFile /mongo-keyfile
+      --auth
     environment:
       - MONGO_INITDB_ROOT_USERNAME=admin
       - MONGO_INITDB_ROOT_PASSWORD=12345678
     volumes:
       - mongo_node1_data:/data/db
+    configs:
+      - source: mongo_key_v1
+        target: /mongo-keyfile
+        uid: '999'
+        gid: '999'
+        mode: 0400
     networks:
       - Docker-Network
     deploy:
@@ -152,12 +172,22 @@ services:
 
   mongo-node-2:
     image: mongo:4.4
-    command: ['mongod', '--replSet', 'rs0', '--bind_ip_all']
+    command: >
+      mongod --replSet rs0 
+      --bind_ip_all 
+      --keyFile /mongo-keyfile
+      --auth
     environment:
       - MONGO_INITDB_ROOT_USERNAME=admin
       - MONGO_INITDB_ROOT_PASSWORD=12345678
     volumes:
       - mongo_node2_data:/data/db
+    configs:
+      - source: mongo_key_v1
+        target: /mongo-keyfile
+        uid: '999'
+        gid: '999'
+        mode: 0400
     networks:
       - Docker-Network
     deploy:
