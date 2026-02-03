@@ -123,19 +123,13 @@ services:
         constraints: [node.hostname == k8s-worker2]
 
   mongo-node-0:
-    image: bitnami/mongodb:4.4
-    user: root
+    image: mongo:4.4
+    command: ['mongod', '--replSet', 'rs0', '--bind_ip_all']
     environment:
-      - MONGODB_REPLICA_SET_MODE=primary
-      - MONGODB_REPLICA_SET_NAME=rs0
-      - MONGODB_PORT_NUMBER=27017
-      - MONGODB_INITIAL_PRIMARY_HOST=mongo-node-0
-      - MONGODB_INITIAL_PRIMARY_PORT_NUMBER=27017
-      - MONGODB_ADVERTISED_HOSTNAME=mongo-node-0
-      - MONGODB_ROOT_PASSWORD=12345678
-      - MONGODB_REPLICA_SET_KEY=12345678
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=12345678
     volumes:
-      - mongo_node0_data:/bitnami/mongodb
+      - mongo_node0_data:/data/db
     networks:
       - Docker-Network
     deploy:
@@ -143,43 +137,29 @@ services:
         constraints: [node.hostname == k8s-master]
 
   mongo-node-1:
-    image: bitnami/mongodb:4.4
-    user: root
+    image: mongo:4.4
+    command: ['mongod', '--replSet', 'rs0', '--bind_ip_all']
     environment:
-      - MONGODB_REPLICA_SET_MODE=secondary
-      - MONGODB_REPLICA_SET_NAME=rs0
-      - MONGODB_INITIAL_PRIMARY_HOST=mongo-node-0
-      - MONGODB_INITIAL_PRIMARY_PORT_NUMBER=27017
-      - MONGODB_ADVERTISED_HOSTNAME=mongo-node-1
-      - MONGODB_ROOT_PASSWORD=12345678
-      - MONGODB_REPLICA_SET_KEY=12345678
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=12345678
     volumes:
-      - mongo_node1_data:/bitnami/mongodb
+      - mongo_node1_data:/data/db
     networks:
       - Docker-Network
-    depends_on:
-      - mongo-node-0
     deploy:
       placement:
         constraints: [node.hostname == k8s-worker1]
 
   mongo-node-2:
-    image: bitnami/mongodb:4.4
-    user: root
+    image: mongo:4.4
+    command: ['mongod', '--replSet', 'rs0', '--bind_ip_all']
     environment:
-      - MONGODB_REPLICA_SET_MODE=secondary
-      - MONGODB_REPLICA_SET_NAME=rs0
-      - MONGODB_INITIAL_PRIMARY_HOST=mongo-node-0
-      - MONGODB_INITIAL_PRIMARY_PORT_NUMBER=27017
-      - MONGODB_ADVERTISED_HOSTNAME=mongo-node-2
-      - MONGODB_ROOT_PASSWORD=12345678
-      - MONGODB_REPLICA_SET_KEY=12345678
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=12345678
     volumes:
-      - mongo_node2_data:/bitnami/mongodb
+      - mongo_node2_data:/data/db
     networks:
       - Docker-Network
-    depends_on:
-      - mongo-node-0
     deploy:
       placement:
         constraints: [node.hostname == k8s-worker2]
