@@ -127,6 +127,8 @@ services:
     command: ['mongod', '--replSet', 'rs0', '--bind_ip_all']
     volumes:
       - mongo_node0_data:/data/db
+    ports:
+      - '27018:27017'
     networks:
       - Docker-Network
     deploy:
@@ -138,6 +140,8 @@ services:
     command: ['mongod', '--replSet', 'rs0', '--bind_ip_all']
     volumes:
       - mongo_node1_data:/data/db
+    ports:
+      - '27018:27017'
     networks:
       - Docker-Network
     deploy:
@@ -149,6 +153,8 @@ services:
     command: ['mongod', '--replSet', 'rs0', '--bind_ip_all']
     volumes:
       - mongo_node2_data:/data/db
+    ports:
+      - '27018:27017'
     networks:
       - Docker-Network
     deploy:
