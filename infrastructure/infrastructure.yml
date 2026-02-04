@@ -128,7 +128,7 @@ services:
     volumes:
       - mongo_node0_data:/data/db
     ports:
-      - '27018:27017'
+      - '27017:27017'
     networks:
       - Docker-Network
     deploy:
@@ -160,7 +160,7 @@ services:
   pg-master:
     image: bitnami/postgresql:latest
     ports:
-      - '5433:5432'
+      - '5432:5432'
     user: root
     environment:
       - POSTGRESQL_USERNAME=postgres
