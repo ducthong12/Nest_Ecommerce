@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # --- BROKER 0 (Chạy trên Worker 1) ---
   kafka-0:
-    image: bitnami/kafka:3.6
+    image: bitnami/kafka:latest
     environment:
       # Định danh Node
       - KAFKA_CFG_NODE_ID=0
@@ -35,7 +35,7 @@ services:
 
   # --- BROKER 1 (Chạy trên Worker 2) ---
   kafka-1:
-    image: bitnami/kafka:3.6
+    image: bitnami/kafka:latest
     environment:
       # Định danh Node (Khác node 0)
       - KAFKA_CFG_NODE_ID=1
