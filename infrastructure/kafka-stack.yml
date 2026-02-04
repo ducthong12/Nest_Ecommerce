@@ -28,7 +28,7 @@ services:
     volumes:
       - kafka_0_data:/bitnami/kafka
     networks:
-      - my-shared-network
+      - kafka-network
     deploy:
       placement:
         constraints: [node.hostname == k8s-worker1]
@@ -60,7 +60,7 @@ services:
     volumes:
       - kafka_1_data:/bitnami/kafka
     networks:
-      - my-shared-network
+      - kafka-network
     deploy:
       placement:
         constraints: [node.hostname == k8s-worker2]
@@ -75,7 +75,7 @@ services:
       # Khai báo cả 2 broker để UI kết nối
       - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka-0:9092,kafka-1:9092
     networks:
-      - my-shared-network
+      - kafka-network
     deploy:
       placement:
         constraints: [node.hostname == k8s-master]
@@ -85,6 +85,6 @@ volumes:
   kafka_1_data:
 
 networks:
-  my-shared-network:
+  kafka-network:
     external: true
-    name: infra_Docker-Network # Thay bằng tên mạng thật của bạn
+    name: Docker-Network
