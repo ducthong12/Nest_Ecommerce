@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  mongo-node-0:
+    image: mongo:4.4
+    command: ['mongod', '--replSet', 'rs0', '--bind_ip_all']
+    volumes:
+      - mongo_node0_data:/data/db
+    ports:
+      - target: 27017
+        published: 27017
+        mode: host
+    networks:
+      - mongo-network
+    deploy:
+      placement:
+        constraints: [node.hostname == k8s-master]
+
+  mongo-node-1:
+    image: mongo:4.4
+    command: ['mongod', '--replSet', 'rs0', '--bind_ip_all']
+    volumes:
+      - mongo_node1_data:/data/db
+    ports:
+      - target: 27017
+        published: 27017
+        mode: host
+    networks:
+      - mongo-network
+    deploy:
+      placement:
+        constraints: [node.hostname == k8s-worker1]
+
+  mongo-node-2:
+    image: mongo:4.4
+    command: ['mongod', '--replSet', 'rs0', '--bind_ip_all']
+    volumes:
+      - mongo_node2_data:/data/db
+    ports:
+      - target: 27017
+        published: 27017
+        mode: host
+    networks:
+      - mongo-network
+    deploy:
+      placement:
+        constraints: [node.hostname == k8s-worker2]
+
+volumes:
+  mongo_node0_data:
+  mongo_node1_data:
+  mongo_node2_data:
+
+networks:
+  mongo-network:
+    external: true
+    name: Docker-Network

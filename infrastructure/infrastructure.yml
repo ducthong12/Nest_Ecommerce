@@ -122,41 +122,6 @@ services:
       placement:
         constraints: [node.hostname == k8s-worker2]
 
-  mongo-node-0:
-    image: mongo:4.4
-    command: ['mongod', '--replSet', 'rs0', '--bind_ip_all']
-    volumes:
-      - mongo_node0_data:/data/db
-    ports:
-      - '27017:27017'
-    networks:
-      - Docker-Network
-    deploy:
-      placement:
-        constraints: [node.hostname == k8s-master]
-
-  mongo-node-1:
-    image: mongo:4.4
-    command: ['mongod', '--replSet', 'rs0', '--bind_ip_all']
-    volumes:
-      - mongo_node1_data:/data/db
-    networks:
-      - Docker-Network
-    deploy:
-      placement:
-        constraints: [node.hostname == k8s-worker1]
-
-  mongo-node-2:
-    image: mongo:4.4
-    command: ['mongod', '--replSet', 'rs0', '--bind_ip_all']
-    volumes:
-      - mongo_node2_data:/data/db
-    networks:
-      - Docker-Network
-    deploy:
-      placement:
-        constraints: [node.hostname == k8s-worker2]
-
   pg-master:
     image: bitnami/postgresql:latest
     ports:
@@ -219,9 +184,6 @@ volumes:
   redis_node0_data:
   redis_node1_data:
   redis_node2_data:
-  mongo_node0_data:
-  mongo_node1_data:
-  mongo_node2_data:
   pg_master_data:
   pg_slave1_data:
   pg_slave2_data:
