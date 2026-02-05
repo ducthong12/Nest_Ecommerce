@@ -18,5 +18,6 @@ volumes:
   grafana_data:
 
 networks:
-  external: true
-  name: Docker-Network
+  kibana-network:
+    external: true
+    name: Docker-Network
