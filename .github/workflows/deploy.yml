@@ -16,7 +16,7 @@ jobs:
           REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
         run: |
           chmod +x scripts/init-swarm.sh
-          ./scripts/init-swarm.sh  # <--- Gọi file script chạy
+          ./scripts/init-swarm.sh
 
   # # JOB 1: BUILD & PUSH (Chạy trên Cloud Ubuntu của GitHub)
   # build-and-push:

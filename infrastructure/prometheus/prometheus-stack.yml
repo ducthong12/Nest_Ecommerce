@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - '9090:9090'
+    configs:
+      - source: prometheus_config
+        target: /etc/prometheus/prometheus.yml
+      - source: prometheus_targets
+        target: /etc/prometheus/targets.json
+    volumes:
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - prometheus-network
+    deploy:
+      placement:
+        constraints: [node.hostname == k8s-master]
+
+configs:
+  prometheus_config:
+    file: ./prometheus.yml
+  prometheus_targets:
+    file: ./targets.json
+
+volumes:
+  prometheus_data:
+
+networks:
+  prometheus-network:
+    external: true
+    name: Docker-Network

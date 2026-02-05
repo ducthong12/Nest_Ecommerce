@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - '16686:16686'
+      - '4317:4317'
+      - '4318:4318'
+    networks:
+      - jaeger-network
+    deploy:
+      placement:
+        constraints: [node.hostname == k8s-worker2]
+
+networks:
+  jaeger-network:
+    external: true
+    name: Docker-Network

@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  kibana:
+    image: kibana:7.17.10
+    ports:
+      - '5601:5601'
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    networks:
+      - kibana-network
+    deploy:
+      placement:
+        constraints: [node.hostname == k8s-master]
+
+volumes:
+  elastic_data:
+  grafana_data:
+
+networks:
+  external: true
+  name: Docker-Network
