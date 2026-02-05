@@ -38,7 +38,6 @@ export class ProductControllerV1 {
 
   @Post('createBrand')
   async createBrand(@Body() createBrandDto: CreateBrandDto) {
-    console.log('createBrandDto', createBrandDto);
     return await this.productService.createBrand(createBrandDto);
   }
 

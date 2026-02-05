@@ -22,27 +22,24 @@ if ! docker secret ls | grep -q mongo_key_secret; then
 fi
 
 # 4. DEPLOY STACK
-# Biến REDIS_PASSWORD đã được GitHub Actions nạp vào từ bước trước
 echo "🚀 Deploying Stack with Redis Password..."
 
 if [ -f "infrastructure/haproxy/haproxy.cfg" ]; then
     echo "🔧 Fixing HAProxy config EOF..."
-    # sed -i -e '$a\' : Append a newline at the last line
     sed -i -e '$a\' infrastructure/haproxy/haproxy.cfg
 fi
 
-# Kiểm tra xem file nằm ở đâu (đề phòng runner đứng sai chỗ)
-if [ -f "infrastructure.yml" ]; then
-    FILE_PATH="infrastructure.yml"
-elif [ -f "infrastructure/infrastructure.yml" ]; then
-    FILE_PATH="infrastructure/infrastructure.yml"
-else
-    echo "❌ ERROR: Không tìm thấy file infrastructure.yml"
-    exit 1
-fi
+FILE_PATH_REDIS="infrastructure/redis.yml"
+FILE_PATH_MONITOR="infrastructure/monitoring-stack.yml"
+FILE_PATH_MONGO="infrastructure/mongo-stack.yml"
+FILE_PATH_PG="infrastructure/pg-stack.yml"
+FILE_PATH_KAFKA="infrastructure/kafka-stack.yml"
 
 # Lệnh deploy chính thức
 # --prune: Tự động xóa các service cũ không còn dùng (Clean rác)
-sudo -E docker stack deploy -c $FILE_PATH infra --prune
-
+sudo -E docker stack deploy -c $FILE_PATH_REDIS infra --prune
+sudo -E docker stack deploy -c $FILE_PATH_MONITOR infra --prune
+sudo -E docker stack deploy -c $FILE_PATH_MONGO infra --prune
+sudo -E docker stack deploy -c $FILE_PATH_PG infra --prune
+sudo -E docker stack deploy -c $FILE_PATH_KAFKA infra --prune
 echo "✅ Deploy command sent!"

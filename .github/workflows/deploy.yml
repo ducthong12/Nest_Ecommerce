@@ -11,7 +11,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Deploy to Swarm
+      - name: Deploy to Infrastructure
         env:
           REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
         run: |

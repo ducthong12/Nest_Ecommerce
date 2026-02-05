@@ -56,7 +56,6 @@ export class ProductController {
 
   @GrpcMethod('ProductService', 'CreateBrand')
   async createBrand(data: CreateBrandDto) {
-    console.log('createBrandDto____', data);
     const result = await this.productService.createBrand(data);
     return result;
   }
