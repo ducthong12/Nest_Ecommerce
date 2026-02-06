@@ -13,6 +13,7 @@ import Redis from 'ioredis';
         const sentinelString = process.env.REDIS_SENTINELS;
 
         if (sentinelString) {
+          console.log('Connecting to Redis via Sentinel nodes');
           const sentinels = sentinelString.split(',').map((item) => {
             const [host, port] = item.split(':');
             return { host, port: parseInt(port, 10) || 26379 };
@@ -28,6 +29,7 @@ import Redis from 'ioredis';
             retryStrategy: (times) => Math.min(times * 50, 2000),
           });
         } else {
+          console.log('Connecting to Redis directly');
           client = new Redis({
             host: process.env.REDIS_HOST || 'localhost',
             port: parseInt(process.env.REDIS_PORT || '6379'),
