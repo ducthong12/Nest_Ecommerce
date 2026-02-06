@@ -10,6 +10,12 @@ import Redis from 'ioredis';
       useFactory: async () => {
         let client: Redis;
 
+        console.log('DEBUG ENV:', {
+          sentinels: process.env.REDIS_SENTINELS,
+          master: process.env.REDIS_MASTER_NAME,
+          type: typeof process.env.REDIS_SENTINELS,
+        });
+
         const sentinelString = process.env.REDIS_SENTINELS;
 
         if (sentinelString) {
