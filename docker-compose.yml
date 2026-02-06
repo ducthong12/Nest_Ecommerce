@@ -1,0 +1,111 @@
+version: '3.8'
+
+networks:
+  app-network:
+    external: true
+    name: Docker-Network
+
+services:
+  # ----------------------------------------------------------------
+  # 1. API GATEWAY (Cổng vào duy nhất)
+  # ----------------------------------------------------------------
+  api-gateway:
+    image: ${DOCKER_USERNAME}/api-gateway:latest
+    ports:
+      - '${API_GATEWAY_PORT}:3000'
+    env_file:
+      - .env
+    networks:
+      - app-network
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+      restart_policy:
+        condition: on-failure
+
+  # ----------------------------------------------------------------
+  # 2. USER SERVICE
+  # ----------------------------------------------------------------
+  user:
+    image: ${DOCKER_USERNAME}/user:latest
+    env_file:
+      - .env
+    networks:
+      - app-network
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+
+  # ----------------------------------------------------------------
+  # 3. PRODUCT SERVICE
+  # ----------------------------------------------------------------
+  product:
+    image: ${DOCKER_USERNAME}/product:latest
+    env_file:
+      - .env
+    networks:
+      - app-network
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+
+  # ----------------------------------------------------------------
+  # 4. ORDER SERVICE
+  # ----------------------------------------------------------------
+  order:
+    image: ${DOCKER_USERNAME}/order:latest
+    env_file:
+      - .env
+    networks:
+      - app-network
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+
+  # ----------------------------------------------------------------
+  # 5. INVENTORY SERVICE
+  # ----------------------------------------------------------------
+  inventory:
+    image: ${DOCKER_USERNAME}/inventory:latest
+    env_file:
+      - .env
+    networks:
+      - app-network
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+
+  # ----------------------------------------------------------------
+  # 6. PAYMENT SERVICE
+  # ----------------------------------------------------------------
+  payment:
+    image: ${DOCKER_USERNAME}/payment:latest
+    env_file:
+      - .env
+    networks:
+      - app-network
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+
+  # ----------------------------------------------------------------
+  # 7. SEARCH SERVICE
+  # ----------------------------------------------------------------
+  search:
+    image: ${DOCKER_USERNAME}/search:latest
+    env_file:
+      - .env
+    networks:
+      - app-network
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure

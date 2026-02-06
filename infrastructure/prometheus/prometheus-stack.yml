@@ -23,9 +23,9 @@ services:
 
 configs:
   prometheus_config:
-    file: ./prometheus.yml
+    file: ./prometheus/prometheus.yml
   prometheus_targets:
-    file: ./targets.json
+    file: ./prometheus/targets.json
 
 volumes:
   prometheus_data:

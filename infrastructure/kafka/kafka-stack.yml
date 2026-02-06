@@ -68,6 +68,32 @@ services:
       placement:
         constraints: [node.hostname == k8s-worker2]
 
+  connect:
+    image: debezium/connect:2.5
+    hostname: connect
+    ports:
+      - target: 8083
+        published: 8083
+        mode: host
+    environment:
+      - BOOTSTRAP_SERVERS=kafka-0:9092,kafka-1:9092
+      - GROUP_ID=1
+      - CONFIG_STORAGE_TOPIC=my_connect_configs
+      - OFFSET_STORAGE_TOPIC=my_connect_offsets
+      - STATUS_STORAGE_TOPIC=my_connect_statuses
+      - KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+      - VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+      - CONNECT_REST_ADVERTISED_HOST_NAME=connect
+      - CONNECT_REST_PORT=8083
+    networks:
+      - kafka-network
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == worker]
+      restart_policy:
+        condition: on-failure
+
   # --- KAFKA UI ---
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
