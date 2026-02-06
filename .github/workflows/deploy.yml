@@ -24,7 +24,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        service: [api-gateway, inventory, order, product, user]
+        service: [api-gateway, inventory, order, product, user, payment, search]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
