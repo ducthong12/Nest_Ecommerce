@@ -69,7 +69,7 @@ jobs:
           cat <<EOF > .env
           DOCKER_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
 
-          # Database Config (Bỏ dấu nháy kép " đi nhé)
+          # Database Config
           DATABASE_URL_USER=postgresql://postgres:12345678@infra_pg-master:5432/ecommerce_db_user?schema=public
           DATABASE_URL_INVENTORY=postgresql://postgres:12345678@infra_pg-master:5432/ecommerce_db_inventory?schema=public
           DATABASE_URL_ORDER=postgresql://postgres:12345678@infra_pg-master:5432/ecommerce_db_order?schema=public

@@ -7,24 +7,45 @@ import Redis from 'ioredis';
     RedisService,
     {
       provide: 'REDIS_CLIENT',
-      async useFactory() {
-        this.redisClient = new Redis({
-          host: '127.0.0.1', //process.env.REDIS_HOST || 'localhost',
-          port: 6379,
-          username: 'default', //process.env.REDIS_USERNAME || 'default',
-          password: '12345678', //process.env.REDIS_PASSWORD,
-          connectTimeout: 30000,
+      useFactory: async () => {
+        let client: Redis;
+
+        const sentinelString = process.env.REDIS_SENTINELS;
+
+        if (sentinelString) {
+          const sentinels = sentinelString.split(',').map((item) => {
+            const [host, port] = item.split(':');
+            return { host, port: parseInt(port, 10) || 26379 };
+          });
+
+          client = new Redis({
+            sentinels: sentinels,
+            name: process.env.REDIS_MASTER_NAME || 'mymaster',
+            password: process.env.REDIS_PASSWORD,
+            sentinelPassword: process.env.REDIS_PASSWORD,
+            role: 'master',
+            connectTimeout: 30000,
+            retryStrategy: (times) => Math.min(times * 50, 2000),
+          });
+        } else {
+          client = new Redis({
+            host: process.env.REDIS_HOST || 'localhost',
+            port: parseInt(process.env.REDIS_PORT || '6379'),
+            username: process.env.REDIS_USERNAME || 'default',
+            password: process.env.REDIS_PASSWORD,
+            connectTimeout: 30000,
+          });
+        }
+
+        client.on('ready', () => {
+          console.log('✅ Redis client connected and ready');
         });
 
-        this.redisClient.on('ready', () => {
-          console.log('Redis client connected and ready');
+        client.on('error', (err) => {
+          console.error('❌ Redis connection error:', err);
         });
 
-        this.redisClient.on('error', (err) => {
-          console.error('Redis connection error:', err);
-        });
-
-        return this.redisClient;
+        return client;
       },
     },
   ],
