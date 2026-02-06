@@ -60,51 +60,41 @@ jobs:
 
       - name: Deploy Microservices
         run: |
-          # 2. Tạo file .env chứa cấu hình
+          # --- 1. Xử lý Private Key (Chuyển nhiều dòng thành 1 dòng với \n) ---
+          # Lấy secret ra biến tạm
+          RAW_KEY="${{ secrets.AWS_CLOUDFRONT_PRIVATE_KEY }}"
+          # Thay thế ký tự xuống dòng thật bằng cụm từ "\n"
+          CLEAN_KEY="${RAW_KEY//$'\n'/\\n}"
+
+          # --- 2. Tạo file .env (Không thụt đầu dòng để tránh lỗi whitespace) ---
           cat <<EOF > .env
-          # --- Variable dùng cho cấu hình YAML ---
+          # Variable hệ thống
           DOCKER_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
 
-          # ======================================================
-          # 1. CẤU HÌNH POSTGRES (3 Database riêng biệt)
-          # ======================================================
-          # Tất cả đều trỏ về 'infra_pg-master' để GHI dữ liệu
-          # Port: 5432
+          # Database & Redis
           DATABASE_URL_USER="postgresql://postgres:12345678@infra_pg-master:5432/ecommerce_db_user?schema=public"
           DATABASE_URL_INVENTORY="postgresql://postgres:12345678@infra_pg-master:5432/ecommerce_db_inventory?schema=public"
           DATABASE_URL_ORDER="postgresql://postgres:12345678@infra_pg-master:5432/ecommerce_db_order?schema=public"
           DATABASE_URL_PAYMENT="postgresql://postgres:12345678@infra_pg-master:5432/ecommerce_db_payment?schema=public"
 
-          # ======================================================
-          # 2. CẤU HÌNH REDIS SENTINEL (High Availability)
-          # ======================================================
-          # Thay vì REDIS_HOST, ta khai báo danh sách Sentinels
-          # Lưu ý: Port của Sentinel là 26379
-          REDIS_SENTINELS="infra_redis-sentinel-0:26379,infra_redis-sentinel-1:26379,infra_redis-sentinel-2:26379"
-
-          # Tên nhóm Master (Phải khớp với file redis-stack.yml)
-          REDIS_MASTER_NAME="mymaster"
-
-          # Password để App xác thực với Redis
-          REDIS_PASSWORD="${{ secrets.REDIS_PASSWORD }}"
-
-          # ======================================================
-          # 3. CẤU HÌNH MONGODB (Replica Set)
-          # ======================================================
           MONGO_URI="mongodb://infra_mongo-node-0:27017,infra_mongo-node-1:27017,infra_mongo-node-2:27017/ecommerce_db?replicaSet=rs0"
 
-          # ======================================================
-          # 4. AWS & PORTS (Giữ nguyên)
-          # ======================================================
+          REDIS_SENTINELS="infra_redis-sentinel-0:26379,infra_redis-sentinel-1:26379,infra_redis-sentinel-2:26379"
+          REDIS_MASTER_NAME="mymaster"
+          REDIS_PASSWORD="${{ secrets.REDIS_PASSWORD }}"
+
+          # AWS Config
           AWS_BUCKET_ACCESS_KEY="${{ secrets.AWS_BUCKET_ACCESS_KEY }}"
           AWS_BUCKET_NAME="${{ secrets.AWS_BUCKET_NAME }}"
           AWS_BUCKET_SECRET_KEY="${{ secrets.AWS_BUCKET_SECRET_KEY }}"
           AWS_REGION_ID="${{ secrets.AWS_REGION_ID }}"
 
+          # Cloudfront (Dùng key đã xử lý ở trên)
           AWS_CLOUDFRONT_KEY_PAIR_ID="${{ secrets.AWS_CLOUDFRONT_KEY_PAIR_ID }}"
-          AWS_CLOUDFRONT_PRIVATE_KEY="${{ secrets.AWS_CLOUDFRONT_PRIVATE_KEY }}"
+          AWS_CLOUDFRONT_PRIVATE_KEY="$CLEAN_KEY"
           AWS_CLOUDFRONT_S3_DOMAIN="${{ secrets.AWS_CLOUDFRONT_S3_DOMAIN }}"
 
+          # Ports
           API_GATEWAY_PORT=3000
           USER_PORT_GRPC=50051
           PRODUCT_PORT_GRPC=50052
@@ -117,10 +107,13 @@ jobs:
           INVENTORY_SERVICE_PORT=3004
           EOF
 
-          # 3. Export biến môi trường cho Shell hiện tại
+          # --- 3. Deploy ---
           export DOCKER_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
 
-          # 4. Pull & Deploy
-          docker compose pull
+          # Pull tuần tự để tránh timeout
+          for service in api-gateway user product order inventory; do
+             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/$service:latest
+          done
+
           docker stack deploy -c docker-compose.yml microservices --with-registry-auth
           docker system prune -f

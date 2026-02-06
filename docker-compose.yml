@@ -7,7 +7,7 @@ networks:
 
 services:
   # ----------------------------------------------------------------
-  # 1. API GATEWAY (Cổng vào duy nhất)
+  # 1. API GATEWAY
   # ----------------------------------------------------------------
   api-gateway:
     image: ${DOCKER_USERNAME}/api-gateway:latest
