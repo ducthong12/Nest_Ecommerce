@@ -81,6 +81,8 @@ jobs:
           REDIS_MASTER_NAME=mymaster
           REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
 
+          KAFKA_BROKERS=infra_kafka-0:9092,infra_kafka-1:9092
+
           AWS_BUCKET_ACCESS_KEY=${{ secrets.AWS_BUCKET_ACCESS_KEY }}
           AWS_BUCKET_NAME=${{ secrets.AWS_BUCKET_NAME }}
           AWS_BUCKET_SECRET_KEY=${{ secrets.AWS_BUCKET_SECRET_KEY }}
