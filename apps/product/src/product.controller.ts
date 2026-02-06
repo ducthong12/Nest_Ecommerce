@@ -9,7 +9,6 @@ import { UpdatePriceDto } from 'common/dto/product/update-price.dto';
 import { OrderCanceledEvent } from 'common/dto/order/order-canceled.event';
 import { OrderCheckoutEvent } from 'common/dto/order/order-checkout.event';
 import { KafkaRetry } from '@common/decorators/kafka-retry.decorator';
-import { PrismaOrderService } from 'apps/order/prisma/prisma-order.service';
 import { RestockInventoryDto } from 'common/dto/inventory/restock-stock.dto';
 
 @Controller()
@@ -71,7 +70,6 @@ export class ProductController {
     maxRetries: 2,
     dltTopic: 'product.restock.failed',
     clientToken: 'PRODUCT_KAFKA_CLIENT',
-    dbToken: PrismaOrderService,
   })
   async handleProductRestock(data: RestockInventoryDto) {
     return await this.productService.processProductRestock(data);
@@ -82,7 +80,6 @@ export class ProductController {
     maxRetries: 2,
     dltTopic: 'product.order.canceled.dlt',
     clientToken: 'PRODUCT_KAFKA_CLIENT',
-    dbToken: PrismaOrderService,
   })
   async handleOrderCanceled(data: OrderCanceledEvent) {
     return await this.productService.processOrderCanceled(data);
@@ -93,7 +90,6 @@ export class ProductController {
     maxRetries: 2,
     dltTopic: 'product.order.checkout.dlt',
     clientToken: 'PRODUCT_KAFKA_CLIENT',
-    dbToken: PrismaOrderService,
   })
   async handleOrderCheckout(data: OrderCheckoutEvent) {
     return await this.productService.processOrderCheckout(data);
