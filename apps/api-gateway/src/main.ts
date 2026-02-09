@@ -36,23 +36,16 @@ async function bootstrap() {
     defaultVersion: '1',
   });
 
-  // app.enableCors({
-  //   origin: [
-  //     'https://app.test.local:3001',
-  //     'https://localhost:3001',
-  //     'https://api.test.local:3000',
-  //   ],
-  //   credentials: true,
-  //   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-  //   allowedHeaders: 'Content-Type, Accept, Authorization',
-  // });
-
-  // For testing purposes
   app.enableCors({
+    // origin: [
+    //   'https://app.test.local:3001',
+    //   'https://localhost:3001',
+    //   'https://api.test.local:3000',
+    // ],
     origin: '*',
+    credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: 'Content-Type, Accept, Authorization',
-    credentials: true,
   });
 
   app.useGlobalPipes(
