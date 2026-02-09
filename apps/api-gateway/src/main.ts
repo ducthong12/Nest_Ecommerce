@@ -43,7 +43,7 @@ async function bootstrap() {
     //   'https://api.test.local:3000',
     // ],
     origin: '*',
-    credentials: true,
+    //credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: 'Content-Type, Accept, Authorization',
   });
