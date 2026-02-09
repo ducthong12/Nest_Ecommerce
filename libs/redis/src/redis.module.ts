@@ -28,8 +28,8 @@ import Redis from 'ioredis';
           client = new Redis({
             sentinels: sentinels,
             name: process.env.REDIS_MASTER_NAME || 'mymaster',
-            password: process.env.REDIS_PASSWORD,
-            sentinelPassword: process.env.REDIS_PASSWORD,
+            password: process.env.REDIS_PASSWORD || '12345678',
+            sentinelPassword: process.env.REDIS_PASSWORD || '12345678',
             role: 'master',
             connectTimeout: 30000,
             retryStrategy: (times) => Math.min(times * 50, 2000),
@@ -40,7 +40,7 @@ import Redis from 'ioredis';
             host: process.env.REDIS_HOST || 'localhost',
             port: parseInt(process.env.REDIS_PORT || '6379'),
             username: process.env.REDIS_USERNAME || 'default',
-            password: process.env.REDIS_PASSWORD,
+            password: process.env.REDIS_PASSWORD || '12345678',
             connectTimeout: 30000,
           });
         }

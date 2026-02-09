@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  fluentd:
+    image: ducthong12/fluentd-es:latest
+    configs:
+      - source: fluentd_config
+        target: /fluentd/etc/fluent.conf
+    ports:
+      - '24224:24224'
+      - '24224:24224/udp'
+    networks:
+      - fluentd-network
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+
+configs:
+  fluentd_config:
+    file: ./fluent.conf
+
+networks:
+  fluentd-network:
+    external: true
+    name: Docker-Network

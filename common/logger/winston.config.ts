@@ -1,4 +1,4 @@
-import { transports, format } from 'winston';
+import winston, { transports, format } from 'winston';
 import { utilities as nestWinstonModuleUtilities } from 'nest-winston';
 import 'winston-daily-rotate-file';
 
@@ -9,16 +9,18 @@ export const createLoggerConfig = (appName: string) => {
       format.json(),
     ),
     transports: [
-      //   new transports.Console({
-      //     format: format.combine(
-      //       format.timestamp(),
-      //       format.ms(),
-      //       nestWinstonModuleUtilities.format.nestLike(appName, {
-      //         colors: true,
-      //         prettyPrint: true,
-      //       }),
-      //     ),
-      //   }),
+      new transports.Console({
+        format: format.combine(
+          format.timestamp(),
+          format.ms(),
+          process.env.NODE_ENV === 'production'
+            ? format.json()
+            : nestWinstonModuleUtilities.format.nestLike(appName, {
+                colors: true,
+                prettyPrint: true,
+              }),
+        ),
+      }),
 
       new transports.DailyRotateFile({
         dirname: `logs/${appName}/error`,
