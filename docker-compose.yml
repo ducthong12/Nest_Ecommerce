@@ -25,6 +25,17 @@ services:
         order: start-first
       restart_policy:
         condition: on-failure
+    logging:
+      driver: 'fluentd'
+      options:
+        # Fluentd chạy global nên mỗi node đều có port 24224
+        fluentd-address: '127.0.0.1:24224'
+        # Đặt tag để biết log này của thằng nào (Quan trọng để filter)
+        tag: 'service.user'
+        # Bắt buộc: Để nếu Fluentd chết, App vẫn chạy tiếp (không bị treo)
+        fluentd-async: 'true'
+        # Giới hạn bộ nhớ đệm log để không ăn hết RAM nếu mất mạng
+        fluentd-buffer-limit: '10MB'
 
   # ----------------------------------------------------------------
   # 2. USER SERVICE
@@ -39,6 +50,17 @@ services:
       replicas: 2
       restart_policy:
         condition: on-failure
+    logging:
+      driver: 'fluentd'
+      options:
+        # Fluentd chạy global nên mỗi node đều có port 24224
+        fluentd-address: '127.0.0.1:24224'
+        # Đặt tag để biết log này của thằng nào (Quan trọng để filter)
+        tag: 'service.user'
+        # Bắt buộc: Để nếu Fluentd chết, App vẫn chạy tiếp (không bị treo)
+        fluentd-async: 'true'
+        # Giới hạn bộ nhớ đệm log để không ăn hết RAM nếu mất mạng
+        fluentd-buffer-limit: '10MB'
 
   # ----------------------------------------------------------------
   # 3. PRODUCT SERVICE
@@ -53,6 +75,17 @@ services:
       replicas: 2
       restart_policy:
         condition: on-failure
+    logging:
+      driver: 'fluentd'
+      options:
+        # Fluentd chạy global nên mỗi node đều có port 24224
+        fluentd-address: '127.0.0.1:24224'
+        # Đặt tag để biết log này của thằng nào (Quan trọng để filter)
+        tag: 'service.user'
+        # Bắt buộc: Để nếu Fluentd chết, App vẫn chạy tiếp (không bị treo)
+        fluentd-async: 'true'
+        # Giới hạn bộ nhớ đệm log để không ăn hết RAM nếu mất mạng
+        fluentd-buffer-limit: '10MB'
 
   # ----------------------------------------------------------------
   # 4. ORDER SERVICE
@@ -67,6 +100,17 @@ services:
       replicas: 2
       restart_policy:
         condition: on-failure
+    logging:
+      driver: 'fluentd'
+      options:
+        # Fluentd chạy global nên mỗi node đều có port 24224
+        fluentd-address: '127.0.0.1:24224'
+        # Đặt tag để biết log này của thằng nào (Quan trọng để filter)
+        tag: 'service.user'
+        # Bắt buộc: Để nếu Fluentd chết, App vẫn chạy tiếp (không bị treo)
+        fluentd-async: 'true'
+        # Giới hạn bộ nhớ đệm log để không ăn hết RAM nếu mất mạng
+        fluentd-buffer-limit: '10MB'
 
   # ----------------------------------------------------------------
   # 5. INVENTORY SERVICE
@@ -81,6 +125,17 @@ services:
       replicas: 2
       restart_policy:
         condition: on-failure
+    logging:
+      driver: 'fluentd'
+      options:
+        # Fluentd chạy global nên mỗi node đều có port 24224
+        fluentd-address: '127.0.0.1:24224'
+        # Đặt tag để biết log này của thằng nào (Quan trọng để filter)
+        tag: 'service.user'
+        # Bắt buộc: Để nếu Fluentd chết, App vẫn chạy tiếp (không bị treo)
+        fluentd-async: 'true'
+        # Giới hạn bộ nhớ đệm log để không ăn hết RAM nếu mất mạng
+        fluentd-buffer-limit: '10MB'
 
   # ----------------------------------------------------------------
   # 6. PAYMENT SERVICE
@@ -95,6 +150,17 @@ services:
       replicas: 2
       restart_policy:
         condition: on-failure
+    logging:
+      driver: 'fluentd'
+      options:
+        # Fluentd chạy global nên mỗi node đều có port 24224
+        fluentd-address: '127.0.0.1:24224'
+        # Đặt tag để biết log này của thằng nào (Quan trọng để filter)
+        tag: 'service.user'
+        # Bắt buộc: Để nếu Fluentd chết, App vẫn chạy tiếp (không bị treo)
+        fluentd-async: 'true'
+        # Giới hạn bộ nhớ đệm log để không ăn hết RAM nếu mất mạng
+        fluentd-buffer-limit: '10MB'
 
   # ----------------------------------------------------------------
   # 7. SEARCH SERVICE
@@ -109,3 +175,14 @@ services:
       replicas: 2
       restart_policy:
         condition: on-failure
+    logging:
+      driver: 'fluentd'
+      options:
+        # Fluentd chạy global nên mỗi node đều có port 24224
+        fluentd-address: '127.0.0.1:24224'
+        # Đặt tag để biết log này của thằng nào (Quan trọng để filter)
+        tag: 'service.user'
+        # Bắt buộc: Để nếu Fluentd chết, App vẫn chạy tiếp (không bị treo)
+        fluentd-async: 'true'
+        # Giới hạn bộ nhớ đệm log để không ăn hết RAM nếu mất mạng
+        fluentd-buffer-limit: '10MB'
