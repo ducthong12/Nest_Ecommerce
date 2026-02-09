@@ -5,6 +5,84 @@ on:
     branches: ['production']
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      services_json: ${{ steps.set-matrix.outputs.services_json }}
+      services_list: ${{ steps.set-matrix.outputs.services_list }}
+      shared: ${{ steps.filter.outputs.shared }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Detect changed services
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            shared:
+              - 'common/**'
+              - 'libs/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'pnpm-lock.yaml'
+              - 'yarn.lock'
+              - 'nest-cli.json'
+              - 'tsconfig.json'
+              - 'tsconfig.build.json'
+              - 'Dockerfile'
+              - 'Dockerfile.*'
+              - 'docker-compose.yml'
+              - 'docker-compose-*.yml'
+              - 'scripts/**'
+              - '.github/workflows/deploy.yml'
+            api-gateway:
+              - 'api-gateway/**'
+            inventory:
+              - 'apps/inventory/**'
+            order:
+              - 'apps/order/**'
+            product:
+              - 'apps/product/**'
+            user:
+              - 'apps/user/**'
+            payment:
+              - 'apps/payment/**'
+            search:
+              - 'apps/search/**'
+
+      - name: Build service matrix
+        id: set-matrix
+        run: |
+          services=()
+          if [[ "${{ steps.filter.outputs.shared }}" == "true" ]]; then
+            services=(api-gateway inventory order product user payment search)
+          else
+            [[ "${{ steps.filter.outputs.api-gateway }}" == "true" ]] && services+=(api-gateway)
+            [[ "${{ steps.filter.outputs.inventory }}" == "true" ]] && services+=(inventory)
+            [[ "${{ steps.filter.outputs.order }}" == "true" ]] && services+=(order)
+            [[ "${{ steps.filter.outputs.product }}" == "true" ]] && services+=(product)
+            [[ "${{ steps.filter.outputs.user }}" == "true" ]] && services+=(user)
+            [[ "${{ steps.filter.outputs.payment }}" == "true" ]] && services+=(payment)
+            [[ "${{ steps.filter.outputs.search }}" == "true" ]] && services+=(search)
+          fi
+
+          if [ ${#services[@]} -eq 0 ]; then
+            echo "services_json=[]" >> "$GITHUB_OUTPUT"
+            echo "services_list=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          json=$(printf '%s\n' "${services[@]}" | python3 - <<'PY'
+          import json,sys
+          services=[line.strip() for line in sys.stdin if line.strip()]
+          print(json.dumps(services))
+          PY
+          )
+
+          echo "services_json=$json" >> "$GITHUB_OUTPUT"
+          echo "services_list=${services[*]}" >> "$GITHUB_OUTPUT"
+
   deploy-infra:
     runs-on: self-hosted
     steps:
@@ -20,11 +98,13 @@ jobs:
 
   # JOB 1: BUILD & PUSH (Chạy trên Cloud Ubuntu của GitHub)
   build-and-push:
+    needs: changes
     runs-on: ubuntu-latest
+    if: needs.changes.outputs.services_json != '[]'
     strategy:
       fail-fast: false
       matrix:
-        service: [api-gateway, inventory, order, product, user, payment, search]
+        service: ${{ fromJson(needs.changes.outputs.services_json) }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -52,8 +132,9 @@ jobs:
 
   # JOB 2: DEPLOY (Chạy trên máy EC2 của bạn - Self-hosted)
   deploy:
-    needs: build-and-push
+    needs: [changes, build-and-push]
     runs-on: self-hosted
+    if: needs.changes.outputs.services_list != ''
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -110,10 +191,17 @@ jobs:
           # --- 4. Deploy ---
           export DOCKER_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
 
-          # Pull images tuần tự
-          for service in api-gateway user product order inventory; do
-             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/$service:latest
-          done
+          SERVICES="${{ needs.changes.outputs.services_list }}"
+          if [[ "${{ needs.changes.outputs.shared }}" == "true" ]]; then
+            for service in $SERVICES; do
+              docker pull ${{ secrets.DOCKERHUB_USERNAME }}/$service:latest
+            done
+            docker stack deploy -c docker-compose.yml microservices --with-registry-auth
+          else
+            for service in $SERVICES; do
+              docker pull ${{ secrets.DOCKERHUB_USERNAME }}/$service:latest
+              docker service update --image ${{ secrets.DOCKERHUB_USERNAME }}/$service:latest --with-registry-auth microservices_$service
+            done
+          fi
 
-          docker stack deploy -c docker-compose.yml microservices --with-registry-auth
           docker system prune -f
