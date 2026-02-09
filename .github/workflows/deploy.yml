@@ -128,11 +128,13 @@ jobs:
   build-and-push:
     needs: changes
     runs-on: ubuntu-latest
-    if: needs.changes.outputs.services_json != '[]' && needs.changes.outputs.services_json != ''
+    # if: needs.changes.outputs.services_json != '[]' && needs.changes.outputs.services_json != ''
+    if: always()
     strategy:
       fail-fast: false
       matrix:
-        service: ${{ fromJson(needs.changes.outputs.services_json) }}
+        # service: ${{ fromJson(needs.changes.outputs.services_json) }}
+        service: ${{ fromJson(needs.changes.outputs.services_json != '[]' && needs.changes.outputs.services_json || '["api-gateway"]') }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
