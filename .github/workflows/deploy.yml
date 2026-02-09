@@ -3,8 +3,13 @@ name: CI/CD
 on:
   push:
     branches: ['production']
+  # 👇 1. THÊM NÚT BẤM CHẠY TAY (Cứu tinh khi Git không bắt được thay đổi)
+  workflow_dispatch:
 
 jobs:
+  # ------------------------------------------------------------------
+  # JOB 1: PHÂN TÍCH THAY ĐỔI (Dựa trên cấu trúc folder ảnh bạn gửi)
+  # ------------------------------------------------------------------
   changes:
     runs-on: ubuntu-latest
     outputs:
@@ -15,32 +20,28 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          # 👇 2. QUAN TRỌNG: Lấy toàn bộ lịch sử để so sánh diff
           fetch-depth: 0
 
       - name: Detect changed services
         id: filter
         uses: dorny/paths-filter@v3
         with:
-          base: ${{ github.event.before }}
-          ref: ${{ github.sha }}
+          # 👇 3. BỎ 'base' và 'ref' -> Để nó tự động so sánh commit trước & sau
           list-files: shell
           filters: |
             shared:
-              - 'common/**'
-              - 'libs/**'
-              - 'package.json'
-              - 'package-lock.json'
+              - 'common/**'           # Thư mục common dùng chung
+              - 'libs/**'             # Thư mục libs
+              - 'database/**'         # Thư mục database
+              - 'package.json'        # Dependencies thay đổi -> Build lại hết
               - 'pnpm-lock.yaml'
-              - 'yarn.lock'
-              - 'nest-cli.json' 
-              - 'tsconfig.json'
-              - 'tsconfig.build.json'
-              - 'Dockerfile'
-              - 'Dockerfile.*'
-              - 'docker-compose.yml'
-              - 'docker-compose-*.yml'
-              - 'scripts/**'
+              - 'package-lock.json'
+              - 'Dockerfile'          # Sửa Dockerfile gốc -> Build lại hết
+              - 'docker-compose.yml'  # Config deploy đổi -> Deploy lại hết
               - '.github/workflows/deploy.yml'
+
+            # 👇 MAP ĐÚNG THEO ẢNH: apps/<tên_service>
             api-gateway:
               - 'apps/api-gateway/**'
             inventory:
@@ -56,23 +57,24 @@ jobs:
             search:
               - 'apps/search/**'
 
-      - name: Debug changed files
-        run: |
-          echo "shared=${{ steps.filter.outputs.shared }}"
-          echo "api-gateway=${{ steps.filter.outputs.api-gateway }}"
-          echo "inventory=${{ steps.filter.outputs.inventory }}"
-          echo "order=${{ steps.filter.outputs.order }}"
-          echo "product=${{ steps.filter.outputs.product }}"
-          echo "user=${{ steps.filter.outputs.user }}"
-          echo "payment=${{ steps.filter.outputs.payment }}"
-          echo "search=${{ steps.filter.outputs.search }}"
-
       - name: Build service matrix
         id: set-matrix
         run: |
           services=()
-          if [[ "${{ steps.filter.outputs.shared }}" == "true" ]]; then
+
+          # --- LOGIC QUYẾT ĐỊNH ---
+
+          # TRƯỜNG HỢP A: Bấm nút chạy tay (workflow_dispatch) -> Deploy HẾT
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo ">>> 🚀 MANUAL TRIGGER: FORCING DEPLOY ALL SERVICES"
             services=(api-gateway inventory order product user payment search)
+            
+          # TRƯỜNG HỢP B: Sửa file dùng chung (Shared) -> Deploy HẾT
+          elif [[ "${{ steps.filter.outputs.shared }}" == "true" ]]; then
+            echo ">>> 🔄 SHARED CODE CHANGED: DEPLOYING ALL SERVICES"
+            services=(api-gateway inventory order product user payment search)
+            
+          # TRƯỜNG HỢP C: Sửa service nào Deploy service đó
           else
             [[ "${{ steps.filter.outputs.api-gateway }}" == "true" ]] && services+=(api-gateway)
             [[ "${{ steps.filter.outputs.inventory }}" == "true" ]] && services+=(inventory)
@@ -83,12 +85,18 @@ jobs:
             [[ "${{ steps.filter.outputs.search }}" == "true" ]] && services+=(search)
           fi
 
+          # Debug
+          echo ">>> Services detected: ${services[@]}"
+
+          # Nếu không có gì thay đổi -> Dừng (Skip)
           if [ ${#services[@]} -eq 0 ]; then
             echo "services_json=[]" >> "$GITHUB_OUTPUT"
             echo "services_list=" >> "$GITHUB_OUTPUT"
+            echo ">>> 💤 No changes detected. Skipping..."
             exit 0
           fi
 
+          # Tạo JSON cho Matrix
           json=$(printf '%s\n' "${services[@]}" | python3 - <<'PY'
           import json,sys
           services=[line.strip() for line in sys.stdin if line.strip()]
@@ -99,12 +107,14 @@ jobs:
           echo "services_json=$json" >> "$GITHUB_OUTPUT"
           echo "services_list=${services[*]}" >> "$GITHUB_OUTPUT"
 
+  # ------------------------------------------------------------------
+  # JOB 2: SETUP INFRA (Luôn chạy cho chắc)
+  # ------------------------------------------------------------------
   deploy-infra:
     runs-on: self-hosted
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-
       - name: Deploy to Infrastructure
         env:
           REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
@@ -112,11 +122,13 @@ jobs:
           chmod +x scripts/init-swarm.sh
           ./scripts/init-swarm.sh
 
-  # JOB 1: BUILD & PUSH (Chạy trên Cloud Ubuntu của GitHub)
+  # ------------------------------------------------------------------
+  # JOB 3: BUILD & PUSH DOCKER (Chạy song song)
+  # ------------------------------------------------------------------
   build-and-push:
     needs: changes
     runs-on: ubuntu-latest
-    if: needs.changes.outputs.services_json != '[]'
+    if: needs.changes.outputs.services_json != '[]' && needs.changes.outputs.services_json != ''
     strategy:
       fail-fast: false
       matrix:
@@ -146,77 +158,85 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # JOB 2: DEPLOY (Chạy trên máy EC2 của bạn - Self-hosted)
+  # ------------------------------------------------------------------
+  # JOB 4: DEPLOY TO SWARM (Chạy trên máy thật)
+  # ------------------------------------------------------------------
   deploy:
     needs: [changes, build-and-push]
     runs-on: self-hosted
-    if: needs.changes.outputs.services_list != ''
+    # Chạy khi có list service HOẶC khi bấm nút Manual
+    if: always() && (needs.changes.outputs.services_list != '' || github.event_name == 'workflow_dispatch')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Deploy Microservices
+        shell: bash
         run: |
-          # --- 1. Xử lý Private Key ---
+          # --- 1. ĐĂNG NHẬP DOCKER (QUAN TRỌNG ĐỂ KHÔNG BỊ RATE LIMIT) ---
+          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+          # --- 2. Xử lý Config ---
           RAW_KEY="${{ secrets.AWS_CLOUDFRONT_PRIVATE_KEY }}"
           CLEAN_KEY="${RAW_KEY//$'\n'/\\n}"
 
-          # --- 2. Tạo file .env (QUAN TRỌNG: KHÔNG DÙNG DẤU NHÁY KÉP CHO URL) ---
-          # Viết thẳng sát lề trái, không thụt dòng
           cat <<EOF > .env
           DOCKER_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
-
-          # Database Config
           DATABASE_URL_USER=postgresql://postgres:12345678@infra_pg-master:5432/ecommerce_db_user?schema=public
           DATABASE_URL_INVENTORY=postgresql://postgres:12345678@infra_pg-master:5432/ecommerce_db_inventory?schema=public
           DATABASE_URL_ORDER=postgresql://postgres:12345678@infra_pg-master:5432/ecommerce_db_order?schema=public
           DATABASE_URL_PAYMENT=postgresql://postgres:12345678@infra_pg-master:5432/ecommerce_db_payment?schema=public
-
           MONGO_URI=mongodb://infra_mongo-node-0:27017,infra_mongo-node-1:27017,infra_mongo-node-2:27017/ecommerce_db?replicaSet=rs0
-
           REDIS_SENTINELS=infra_redis-sentinel-0:26379,infra_redis-sentinel-1:26379,infra_redis-sentinel-2:26379
           REDIS_MASTER_NAME=mymaster
           REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
-
           KAFKA_BROKERS=infra_kafka-0:9092,infra_kafka-1:9092
-
           AWS_BUCKET_ACCESS_KEY=${{ secrets.AWS_BUCKET_ACCESS_KEY }}
           AWS_BUCKET_NAME=${{ secrets.AWS_BUCKET_NAME }}
           AWS_BUCKET_SECRET_KEY=${{ secrets.AWS_BUCKET_SECRET_KEY }}
           AWS_REGION_ID=${{ secrets.AWS_REGION_ID }}
-
           AWS_CLOUDFRONT_KEY_PAIR_ID=${{ secrets.AWS_CLOUDFRONT_KEY_PAIR_ID }}
           AWS_CLOUDFRONT_PRIVATE_KEY=$CLEAN_KEY
           AWS_CLOUDFRONT_S3_DOMAIN=${{ secrets.AWS_CLOUDFRONT_S3_DOMAIN }}
-
           API_GATEWAY_PORT=3000
           USER_PORT_GRPC=50051
           PRODUCT_PORT_GRPC=50052
           ORDER_PORT_GRPC=50053
           INVENTORY_PORT_GRPC=50054
-
           USER_SERVICE_PORT=3007
           PRODUCT_SERVICE_PORT=3002
           ORDER_SERVICE_PORT=3003
           INVENTORY_SERVICE_PORT=3004
           EOF
 
-          # --- 3. Xóa khoảng trắng thừa ở đầu dòng (Fix lỗi whitespaces triệt để) ---
           sed -i 's/^[ \t]*//' .env
-
-          # --- 4. Deploy ---
           export DOCKER_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
 
+          # --- 3. LOGIC DEPLOY THÔNG MINH ---
           SERVICES="${{ needs.changes.outputs.services_list }}"
-          if [[ "${{ needs.changes.outputs.shared }}" == "true" ]]; then
-            for service in $SERVICES; do
-              docker pull ${{ secrets.DOCKERHUB_USERNAME }}/$service:latest
+          SHARED="${{ needs.changes.outputs.shared }}"
+          IS_MANUAL="${{ github.event_name == 'workflow_dispatch' }}"
+
+          echo ">>> DEPLOY CONTEXT - Manual: $IS_MANUAL | Shared: $SHARED | List: $SERVICES"
+
+          if [[ "$SHARED" == "true" ]] || [[ "$IS_MANUAL" == "true" ]]; then
+            echo ">>> 🚀 FULL STACK DEPLOYMENT INITIATED..."
+            # Pull all images
+            for svc in api-gateway inventory order product user payment search; do
+               docker pull ${{ secrets.DOCKERHUB_USERNAME }}/$svc:latest
             done
             docker stack deploy -c docker-compose.yml microservices --with-registry-auth
           else
+            echo ">>> 🎯 PARTIAL DEPLOYMENT INITIATED..."
             for service in $SERVICES; do
+              echo ">>> Updating service: microservices_$service"
               docker pull ${{ secrets.DOCKERHUB_USERNAME }}/$service:latest
-              docker service update --image ${{ secrets.DOCKERHUB_USERNAME }}/$service:latest --with-registry-auth microservices_$service
+              # Force update để đảm bảo container được restart
+              docker service update \
+                --image ${{ secrets.DOCKERHUB_USERNAME }}/$service:latest \
+                --with-registry-auth \
+                --force \
+                microservices_$service
             done
           fi
 
