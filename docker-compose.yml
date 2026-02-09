@@ -31,7 +31,7 @@ services:
         # Fluentd chạy global nên mỗi node đều có port 24224
         fluentd-address: '127.0.0.1:24224'
         # Đặt tag để biết log này của thằng nào (Quan trọng để filter)
-        tag: 'service.user'
+        tag: 'service.api-gateway'
         # Bắt buộc: Để nếu Fluentd chết, App vẫn chạy tiếp (không bị treo)
         fluentd-async: 'true'
         # Giới hạn bộ nhớ đệm log để không ăn hết RAM nếu mất mạng
@@ -81,7 +81,7 @@ services:
         # Fluentd chạy global nên mỗi node đều có port 24224
         fluentd-address: '127.0.0.1:24224'
         # Đặt tag để biết log này của thằng nào (Quan trọng để filter)
-        tag: 'service.user'
+        tag: 'service.product'
         # Bắt buộc: Để nếu Fluentd chết, App vẫn chạy tiếp (không bị treo)
         fluentd-async: 'true'
         # Giới hạn bộ nhớ đệm log để không ăn hết RAM nếu mất mạng
@@ -106,7 +106,7 @@ services:
         # Fluentd chạy global nên mỗi node đều có port 24224
         fluentd-address: '127.0.0.1:24224'
         # Đặt tag để biết log này của thằng nào (Quan trọng để filter)
-        tag: 'service.user'
+        tag: 'service.order'
         # Bắt buộc: Để nếu Fluentd chết, App vẫn chạy tiếp (không bị treo)
         fluentd-async: 'true'
         # Giới hạn bộ nhớ đệm log để không ăn hết RAM nếu mất mạng
@@ -131,7 +131,7 @@ services:
         # Fluentd chạy global nên mỗi node đều có port 24224
         fluentd-address: '127.0.0.1:24224'
         # Đặt tag để biết log này của thằng nào (Quan trọng để filter)
-        tag: 'service.user'
+        tag: 'service.inventory'
         # Bắt buộc: Để nếu Fluentd chết, App vẫn chạy tiếp (không bị treo)
         fluentd-async: 'true'
         # Giới hạn bộ nhớ đệm log để không ăn hết RAM nếu mất mạng
@@ -156,7 +156,7 @@ services:
         # Fluentd chạy global nên mỗi node đều có port 24224
         fluentd-address: '127.0.0.1:24224'
         # Đặt tag để biết log này của thằng nào (Quan trọng để filter)
-        tag: 'service.user'
+        tag: 'service.payment'
         # Bắt buộc: Để nếu Fluentd chết, App vẫn chạy tiếp (không bị treo)
         fluentd-async: 'true'
         # Giới hạn bộ nhớ đệm log để không ăn hết RAM nếu mất mạng
@@ -181,7 +181,7 @@ services:
         # Fluentd chạy global nên mỗi node đều có port 24224
         fluentd-address: '127.0.0.1:24224'
         # Đặt tag để biết log này của thằng nào (Quan trọng để filter)
-        tag: 'service.user'
+        tag: 'service.search'
         # Bắt buộc: Để nếu Fluentd chết, App vẫn chạy tiếp (không bị treo)
         fluentd-async: 'true'
         # Giới hạn bộ nhớ đệm log để không ăn hết RAM nếu mất mạng
