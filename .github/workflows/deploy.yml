@@ -27,7 +27,7 @@ jobs:
               - 'package-lock.json'
               - 'pnpm-lock.yaml'
               - 'yarn.lock'
-              - 'nest-cli.json'
+              - 'nest-cli.json' 
               - 'tsconfig.json'
               - 'tsconfig.build.json'
               - 'Dockerfile'
@@ -37,7 +37,7 @@ jobs:
               - 'scripts/**'
               - '.github/workflows/deploy.yml'
             api-gateway:
-              - 'api-gateway/**'
+              - 'apps/api-gateway/**'
             inventory:
               - 'apps/inventory/**'
             order:
