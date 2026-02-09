@@ -47,6 +47,7 @@ async function bootstrap() {
   //   allowedHeaders: 'Content-Type, Accept, Authorization',
   // });
 
+  // For testing purposes, allow all origins. Update this in production.
   app.enableCors({
     origin: '*',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
