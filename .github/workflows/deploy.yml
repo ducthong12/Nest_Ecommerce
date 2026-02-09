@@ -205,12 +205,18 @@ jobs:
           PRODUCT_SERVICE_PORT=3002
           ORDER_SERVICE_PORT=3003
           INVENTORY_SERVICE_PORT=3004
-          USER_GRPC_URL=microservices_user:50051
-          PRODUCT_GRPC_URL=microservices_product:50052
-          ORDER_GRPC_URL=microservices_order:50053
-          INVENTORY_GRPC_URL=microservices_inventory:50054
-          PAYMENT_GRPC_URL=microservices_payment:50055
-          SEARCH_GRPC_URL=microservices_search:50056
+          API_USER_GRPC_URL=microservices_user:50051
+          API_PRODUCT_GRPC_URL=microservices_product:50052
+          API_ORDER_GRPC_URL=microservices_order:50053
+          API_INVENTORY_GRPC_URL=microservices_inventory:50054
+          API_PAYMENT_GRPC_URL=microservices_payment:50055
+          API_SEARCH_GRPC_URL=microservices_search:50056
+          USER_GRPC_URL="0.0.0.0:50051"
+          PRODUCT_GRPC_URL="0.0.0.0:50052"
+          ORDER_GRPC_URL="0.0.0.0:50053"
+          INVENTORY_GRPC_URL="0.0.0.0:50054"
+          PAYMENT_GRPC_URL="0.0.0.0:50055"
+          SEARCH_GRPC_URL="0.0.0.0:50056"
           EOF
 
           sed -i 's/^[ \t]*//' .env

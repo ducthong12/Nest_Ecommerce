@@ -18,7 +18,7 @@ import { ConfigModule } from '@nestjs/config';
         options: {
           package: NAME_SERVICE_GRPC.INVENTORY_PACKAGE,
           protoPath: join(__dirname, '/inventory.proto'),
-          url: process.env.INVENTORY_GRPC_URL,
+          url: process.env.API_INVENTORY_GRPC_URL,
         },
       },
       {
@@ -27,7 +27,7 @@ import { ConfigModule } from '@nestjs/config';
         options: {
           package: NAME_SERVICE_GRPC.ORDER_PACKAGE,
           protoPath: join(__dirname, '/order.proto'),
-          url: process.env.ORDER_GRPC_URL,
+          url: process.env.API_ORDER_GRPC_URL,
         },
       },
       {
@@ -36,7 +36,7 @@ import { ConfigModule } from '@nestjs/config';
         options: {
           package: NAME_SERVICE_GRPC.PAYMENT_PACKAGE,
           protoPath: join(__dirname, '/payment.proto'),
-          url: process.env.PAYMENT_GRPC_URL,
+          url: process.env.API_PAYMENT_GRPC_URL,
         },
       },
       {
@@ -45,7 +45,7 @@ import { ConfigModule } from '@nestjs/config';
         options: {
           package: NAME_SERVICE_GRPC.PRODUCT_PACKAGE,
           protoPath: join(__dirname, '/product.proto'),
-          url: process.env.PRODUCT_GRPC_URL,
+          url: process.env.API_PRODUCT_GRPC_URL,
         },
       },
       {
@@ -54,7 +54,7 @@ import { ConfigModule } from '@nestjs/config';
         options: {
           package: NAME_SERVICE_GRPC.SEARCH_PACKAGE,
           protoPath: join(__dirname, '/search.proto'),
-          url: process.env.SEARCH_GRPC_URL,
+          url: process.env.API_SEARCH_GRPC_URL,
         },
       },
       {
@@ -63,7 +63,7 @@ import { ConfigModule } from '@nestjs/config';
         options: {
           package: NAME_SERVICE_GRPC.USER_PACKAGE,
           protoPath: join(__dirname, '/user.proto'),
-          url: process.env.USER_GRPC_URL,
+          url: process.env.API_USER_GRPC_URL,
         },
       },
       {
@@ -72,7 +72,7 @@ import { ConfigModule } from '@nestjs/config';
         options: {
           package: NAME_SERVICE_GRPC.STORAGE_PACKAGE,
           protoPath: join(__dirname, '/storage.proto'),
-          url: process.env.STORAGE_GRPC_URL,
+          url: process.env.API_TORAGE_GRPC_URL,
         },
       },
     ]),
