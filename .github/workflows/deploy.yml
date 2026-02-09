@@ -19,6 +19,9 @@ jobs:
         id: filter
         uses: dorny/paths-filter@v3
         with:
+          base: ${{ github.event.before }}
+          ref: ${{ github.sha }}
+          list-files: shell
           filters: |
             shared:
               - 'common/**'
@@ -50,6 +53,17 @@ jobs:
               - 'apps/payment/**'
             search:
               - 'apps/search/**'
+
+      - name: Debug changed files
+        run: |
+          echo "shared=${{ steps.filter.outputs.shared }}"
+          echo "api-gateway=${{ steps.filter.outputs.api-gateway }}"
+          echo "inventory=${{ steps.filter.outputs.inventory }}"
+          echo "order=${{ steps.filter.outputs.order }}"
+          echo "product=${{ steps.filter.outputs.product }}"
+          echo "user=${{ steps.filter.outputs.user }}"
+          echo "payment=${{ steps.filter.outputs.payment }}"
+          echo "search=${{ steps.filter.outputs.search }}"
 
       - name: Build service matrix
         id: set-matrix
