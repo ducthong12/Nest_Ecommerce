@@ -9,7 +9,32 @@ services:
     ports:
       - '6379:6379'
     volumes:
-      - ./redis_data:/data
+      - redis_data:/data
+    networks:
+      - app-network
+
+  postgres:
+    image: bitnami/postgresql:latest
+    container_name: pg-master
+    ports:
+      - '5432:5432'
+    environment:
+      - POSTGRESQL_USERNAME=postgres
+      - POSTGRESQL_PASSWORD=12345678
+      - POSTGRESQL_DATABASE=postgres
+      - ALLOW_EMPTY_PASSWORD=yes
+    volumes:
+      - pg_master_data:/bitnami/postgresql
+    networks:
+      - app-network
+
+  mongo:
+    image: mongo:4.4
+    container_name: mongo
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo_data:/data/db
     networks:
       - app-network
 
@@ -21,6 +46,21 @@ services:
       - 'ES_JAVA_OPTS=-Xms512m -Xmx512m'
     ports:
       - '9200:9200'
+    networks:
+      - app-network
+
+  fluentd:
+    image: ducthong12/fluentd-es:latest
+    container_name: fluentd
+    volumes:
+      - ./infrastructure/fluentd/fluent.conf:/fluentd/etc/fluent.conf:ro
+      - ./logs:/fluentd/log/elastic-buffer
+    ports:
+      - '24224:24224'
+      - '24224:24224/udp'
+    user: root
+    depends_on:
+      - elasticsearch
     networks:
       - app-network
 
@@ -45,6 +85,8 @@ services:
       - '4318:4318'
     environment:
       - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - app-network
 
   prometheus:
     image: prom/prometheus:latest
@@ -52,13 +94,15 @@ services:
     ports:
       - '9090:9090'
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - ./targets.json:/etc/prometheus/targets.json:ro
+      - ./infrastructure/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infrastructure/prometheus/targets.json:/etc/prometheus/targets.json:ro
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
+    networks:
+      - app-network
 
   grafana:
     image: grafana/grafana:latest
@@ -71,6 +115,8 @@ services:
     depends_on:
       - prometheus
       - jaeger
+    networks:
+      - app-network
 
   kafka:
     image: apache/kafka:latest
@@ -101,12 +147,22 @@ services:
 
       # Listener nào dùng để giao tiếp giữa các Broker (nếu có cluster)
       KAFKA_INTER_BROKER_LISTENER_NAME: 'INTERNAL'
-
-      # --- CẤU HÌNH DEV (GIẢM TẢI) ---
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          '/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:29092',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    networks:
+      - app-network
   connect:
     image: debezium/connect:2.5
     container_name: kafka_connect
@@ -121,13 +177,17 @@ services:
       - KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter
       - VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter
     depends_on:
-      - kafka
+      kafka:
+        condition: service_healthy
+    networks:
+      - app-network
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: kafka-ui
     depends_on:
-      - kafka
+      kafka:
+        condition: service_healthy
     ports:
       - '8080:8080'
     environment:
@@ -135,6 +195,224 @@ services:
       # Kafka UI nằm chung mạng Docker nên dùng port INTERNAL (29092)
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
       KAFKA_CLUSTERS_0_PROPERTIES_SECURITY_PROTOCOL: PLAINTEXT
+    networks:
+      - app-network
+
+  # ----------------------------------------------------------------
+  # 1. API GATEWAY
+  # ----------------------------------------------------------------
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: api-gateway
+    ports:
+      - '3333:3333'
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_started
+      mongo:
+        condition: service_started
+      redis:
+        condition: service_started
+      elasticsearch:
+        condition: service_started
+      jaeger:
+        condition: service_started
+      prometheus:
+        condition: service_started
+      kafka:
+        condition: service_healthy
+    logging:
+      driver: 'fluentd'
+      options:
+        fluentd-address: 'host.docker.internal:24224'
+        tag: 'service.api-gateway'
+        fluentd-async: 'true'
+        mode: non-blocking
+        fluentd-buffer-limit: '10MB'
+    networks:
+      - app-network
+
+  # ----------------------------------------------------------------
+  # 2. USER SERVICE
+  # ----------------------------------------------------------------
+  user:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: user
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_started
+      redis:
+        condition: service_started
+      kafka:
+        condition: service_healthy
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: 'fluentd:24224'
+        tag: 'service.user'
+        fluentd-async: 'true'
+        fluentd-buffer-limit: '10MB'
+    networks:
+      - app-network
+
+  # ----------------------------------------------------------------
+  # 3. PRODUCT SERVICE
+  # ----------------------------------------------------------------
+  product:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: product
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_started
+      redis:
+        condition: service_started
+      elasticsearch:
+        condition: service_started
+      kafka:
+        condition: service_healthy
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: 'fluentd:24224'
+        tag: 'service.product'
+        fluentd-async: 'true'
+        fluentd-buffer-limit: '10MB'
+    networks:
+      - app-network
+
+  # ----------------------------------------------------------------
+  # 4. ORDER SERVICE
+  # ----------------------------------------------------------------
+  order:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: order
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_started
+      redis:
+        condition: service_started
+      kafka:
+        condition: service_healthy
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: 'fluentd:24224'
+        tag: 'service.order'
+        fluentd-async: 'true'
+        fluentd-buffer-limit: '10MB'
+    networks:
+      - app-network
+
+  # ----------------------------------------------------------------
+  # 5. INVENTORY SERVICE
+  # ----------------------------------------------------------------
+  inventory:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: inventory
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_started
+      redis:
+        condition: service_started
+      kafka:
+        condition: service_healthy
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: 'fluentd:24224'
+        tag: 'service.inventory'
+        fluentd-async: 'true'
+        fluentd-buffer-limit: '10MB'
+    networks:
+      - app-network
+
+  # ----------------------------------------------------------------
+  # 6. PAYMENT SERVICE
+  # ----------------------------------------------------------------
+  payment:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: payment
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_started
+      redis:
+        condition: service_started
+      kafka:
+        condition: service_healthy
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: 'fluentd:24224'
+        tag: 'service.payment'
+        fluentd-async: 'true'
+        fluentd-buffer-limit: '10MB'
+    networks:
+      - app-network
+
+  # ----------------------------------------------------------------
+  # 7. SEARCH SERVICE
+  # ----------------------------------------------------------------
+  search:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: search
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_started
+      redis:
+        condition: service_started
+      elasticsearch:
+        condition: service_started
+      kafka:
+        condition: service_healthy
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: 'fluentd:24224'
+        tag: 'service.search'
+        fluentd-async: 'true'
+        fluentd-buffer-limit: '10MB'
+    networks:
+      - app-network
 networks:
   app-network:
     driver: bridge
+
+volumes:
+  redis_data:
+  pg_master_data:
+  mongo_data:

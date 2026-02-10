@@ -31,7 +31,8 @@
     "start:nodeB": "concurrently -n USER,INVENTORY,PRODUCT,ORDER,PAYMENT,SEARCH,STORAGE -c blue,green,pink,yellow,blue,green,pink \"npm run start:user\" \"npm run start:inventory\" \"npm run start:product\" \"npm run start:order\" \"npm run start:payment\" \"npm run start:search\" \"npm run start:storage\"",
     "generate:prisma": "concurrently \"npx prisma generate --schema=apps/user/prisma/schema.prisma\" \"npx prisma generate --schema=apps/order/prisma/schema.prisma\" \"npx prisma generate --schema=apps/inventory/prisma/schema.prisma\" \"npx prisma generate --schema=apps/payment/prisma/schema.prisma\"",
     "generate:prisma-docs": "concurrently \"npx prisma generate docs --schema=apps/user/prisma/schema.prisma\" \"npx prisma generate docs --schema=apps/order/prisma/schema.prisma\" \"npx prisma generate docs --schema=apps/inventory/prisma/schema.prisma\" \"npx prisma generate docs --schema=apps/payment/prisma/schema.prisma\"",
-    "migrate:prisma": "concurrently \"npx prisma migrate dev --schema=apps/user/prisma/schema.prisma\" \"npx prisma migrate dev --schema=apps/order/prisma/schema.prisma\" \"npx prisma migrate dev --schema=apps/inventory/prisma/schema.prisma\" \"npx prisma migrate dev --schema=apps/payment/prisma/schema.prisma\""
+    "migrate:prisma": "concurrently \"npx prisma migrate dev --schema=apps/user/prisma/schema.prisma\" \"npx prisma migrate dev --schema=apps/order/prisma/schema.prisma\" \"npx prisma migrate dev --schema=apps/inventory/prisma/schema.prisma\" \"npx prisma migrate dev --schema=apps/payment/prisma/schema.prisma\"",
+    "migrate:prisma:deploy": "concurrently \"npx prisma migrate deploy --schema=apps/user/prisma/schema.prisma\" \"npx prisma migrate deploy --schema=apps/order/prisma/schema.prisma\" \"npx prisma migrate deploy --schema=apps/inventory/prisma/schema.prisma\" \"npx prisma migrate deploy --schema=apps/payment/prisma/schema.prisma\""
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.943.0",

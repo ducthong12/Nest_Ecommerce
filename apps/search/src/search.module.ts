@@ -19,7 +19,7 @@ import { PrometheusModule } from '@willsoto/nestjs-prometheus';
       },
     }),
     ElasticsearchModule.register({
-      node: 'http://localhost:9200',
+      node: process.env.ELASTICSEARCH_NODE || 'http://elasticsearch:9200',
     }),
     ClientsModule.register([
       {
@@ -28,7 +28,7 @@ import { PrometheusModule } from '@willsoto/nestjs-prometheus';
         options: {
           client: {
             clientId: 'search-service',
-            brokers: [process.env.KAFKA_BROKER || 'localhost:9092'],
+            brokers: (process.env.KAFKA_BROKERS || 'kafka:29092').split(','),
           },
           producer: {
             allowAutoTopicCreation: true,

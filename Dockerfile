@@ -1,5 +1,5 @@
 # --- Stage 1: Base & Dependencies ---
-FROM public.ecr.aws/docker/library/node:20-alpine AS base
+FROM node:20-alpine AS base
 
 # Cài thư viện hệ thống cần thiết (giữ lại cho stage runner)
 RUN apk add --no-cache libc6-compat openssl
