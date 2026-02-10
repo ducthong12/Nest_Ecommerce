@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  pg-master:
+    image: bitnami/postgresql:latest
+    ports:
+      - '5432:5432'
+    user: root
+    environment:
+      - POSTGRESQL_USERNAME=postgres
+      - POSTGRESQL_PASSWORD=12345678
+      - POSTGRESQL_DATABASE=postgres
+      - POSTGRESQL_REPLICATION_MODE=master
+      - POSTGRESQL_REPLICATION_USER=slave_user
+      - POSTGRESQL_REPLICATION_PASSWORD=12345678
+      - POSTGRESQL_PGAUDIT_LOG=read,write
+      - ALLOW_EMPTY_PASSWORD=yes
+    volumes:
+      - pg_master_data:/bitnami/postgresql
+    networks:
+      - pg-network
+    deploy:
+      placement:
+        constraints: [node.hostname == k8s-master]
+
+  pg-slave1:
+    image: bitnami/postgresql:latest
+    user: root
+    environment:
+      - POSTGRESQL_PASSWORD=12345678
+      - POSTGRESQL_REPLICATION_MODE=slave
+      - POSTGRESQL_MASTER_HOST=pg-master
+      - POSTGRESQL_MASTER_PORT_NUMBER=5432
+      - POSTGRESQL_REPLICATION_USER=slave_user
+      - POSTGRESQL_REPLICATION_PASSWORD=12345678
+    volumes:
+      - pg_slave1_data:/bitnami/postgresql
+    networks:
+      - pg-network
+    deploy:
+      placement:
+        constraints: [node.hostname == k8s-worker1]
+
+  pg-slave2:
+    image: bitnami/postgresql:latest
+    user: root
+    environment:
+      - POSTGRESQL_PASSWORD=12345678
+      - POSTGRESQL_REPLICATION_MODE=slave
+      - POSTGRESQL_MASTER_HOST=pg-master
+      - POSTGRESQL_MASTER_PORT_NUMBER=5432
+      - POSTGRESQL_REPLICATION_USER=slave_user
+      - POSTGRESQL_REPLICATION_PASSWORD=12345678
+    volumes:
+      - pg_slave2_data:/bitnami/postgresql
+    networks:
+      - pg-network
+    deploy:
+      placement:
+        constraints: [node.hostname == k8s-worker2]
+
+volumes:
+  pg_master_data:
+  pg_slave1_data:
+  pg_slave2_data:
+
+networks:
+  pg-network:
+    external: true
+    name: Docker-Network

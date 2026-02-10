@@ -1,36 +1,52 @@
 version: '3.8'
 
 services:
-  redis-node-0:
-    image: bitnami/redis:7.0
-    environment:
-      - REDIS_REPLICATION_MODE=master
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
-      - REDIS_AOF_ENABLED=yes
-    volumes:
-      - redis_node0_data:/bitnami/redis/data
+  haproxy:
+    image: haproxy:latest
+    configs:
+      - source: haproxy_config
+        target: /usr/local/etc/haproxy/haproxy.cfg
     ports:
       - target: 6379
         published: 6379
         mode: host
+      - target: 8404
+        published: 8404
+        mode: host
     networks:
-      - DevOps-Network
+      - Docker-Network
+    deploy:
+      placement:
+        constraints: [node.hostname == k8s-master]
+
+  redis-node-0:
+    image: bitnami/redis:latest
+    user: root
+    environment:
+      - REDIS_REPLICATION_MODE=master
+      - REDIS_PASSWORD=12345678
+      - REDIS_AOF_ENABLED=yes
+    volumes:
+      - redis_node0_data:/bitnami/redis/data
+    networks:
+      - Docker-Network
     deploy:
       placement:
         constraints: [node.hostname == k8s-master]
 
   redis-node-1:
-    image: bitnami/redis:7.0
+    image: bitnami/redis:latest
+    user: root
     environment:
       - REDIS_REPLICATION_MODE=slave
       - REDIS_MASTER_HOST=redis-node-0
       - REDIS_MASTER_PORT_NUMBER=6379
-      - REDIS_MASTER_PASSWORD=${REDIS_PASSWORD}
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_MASTER_PASSWORD=12345678
+      - REDIS_PASSWORD=12345678
     volumes:
       - redis_node1_data:/bitnami/redis/data
     networks:
-      - DevOps-Network
+      - Docker-Network
     deploy:
       placement:
         constraints: [node.hostname == k8s-worker1]
@@ -38,17 +54,18 @@ services:
       - redis-node-0
 
   redis-node-2:
-    image: bitnami/redis:7.0
+    image: bitnami/redis:latest
+    user: root
     environment:
       - REDIS_REPLICATION_MODE=slave
       - REDIS_MASTER_HOST=redis-node-0
       - REDIS_MASTER_PORT_NUMBER=6379
-      - REDIS_MASTER_PASSWORD=${REDIS_PASSWORD}
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_MASTER_PASSWORD=12345678
+      - REDIS_PASSWORD=12345678
     volumes:
       - redis_node2_data:/bitnami/redis/data
     networks:
-      - DevOps-Network
+      - Docker-Network
     deploy:
       placement:
         constraints: [node.hostname == k8s-worker2]
@@ -56,16 +73,17 @@ services:
       - redis-node-0
 
   redis-sentinel-0:
-    image: bitnami/redis-sentinel:7.0
+    image: bitnami/redis-sentinel:latest
+    user: root
     environment:
       - REDIS_SENTINEL_DOWN_AFTER_MILLISECONDS=5000
       - REDIS_SENTINEL_FAILOVER_TIMEOUT=10000
       - REDIS_MASTER_HOST=redis-node-0
       - REDIS_MASTER_PORT_NUMBER=6379
       - REDIS_MASTER_SET=mymaster
-      - REDIS_MASTER_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_MASTER_PASSWORD=12345678
     networks:
-      - DevOps-Network
+      - Docker-Network
     deploy:
       placement:
         constraints: [node.hostname == k8s-master]
@@ -73,31 +91,46 @@ services:
       - redis-node-0
 
   redis-sentinel-1:
-    image: bitnami/redis-sentinel:7.0
+    image: bitnami/redis-sentinel:latest
+    user: root
     environment:
       - REDIS_SENTINEL_DOWN_AFTER_MILLISECONDS=5000
       - REDIS_SENTINEL_FAILOVER_TIMEOUT=10000
       - REDIS_MASTER_HOST=redis-node-0
       - REDIS_MASTER_PORT_NUMBER=6379
       - REDIS_MASTER_SET=mymaster
-      - REDIS_MASTER_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_MASTER_PASSWORD=12345678
     networks:
-      - DevOps-Network
+      - Docker-Network
     deploy:
       placement:
         constraints: [node.hostname == k8s-worker1]
 
   redis-sentinel-2:
-    image: bitnami/redis-sentinel:7.0
+    image: bitnami/redis-sentinel:latest
+    user: root
     environment:
       - REDIS_SENTINEL_DOWN_AFTER_MILLISECONDS=5000
       - REDIS_SENTINEL_FAILOVER_TIMEOUT=10000
       - REDIS_MASTER_HOST=redis-node-0
       - REDIS_MASTER_PORT_NUMBER=6379
       - REDIS_MASTER_SET=mymaster
-      - REDIS_MASTER_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_MASTER_PASSWORD=12345678
     networks:
-      - DevOps-Network
+      - Docker-Network
     deploy:
       placement:
         constraints: [node.hostname == k8s-worker2]
+
+volumes:
+  redis_node0_data:
+  redis_node1_data:
+  redis_node2_data:
+
+networks:
+  Docker-Network:
+    external: true
+
+configs:
+  haproxy_config:
+    file: ./haproxy/haproxy.cfg

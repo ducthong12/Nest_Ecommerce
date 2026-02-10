@@ -1,0 +1,118 @@
+version: '3.8'
+
+services:
+  kafka-0:
+    image: apache/kafka:latest
+    hostname: kafka-0
+    environment:
+      # 👇 Cấu hình chuẩn của Apache (Không có _CFG)
+      - KAFKA_NODE_ID=0
+      - KAFKA_PROCESS_ROLES=controller,broker
+      # Liệt kê đủ 3 node
+      - KAFKA_CONTROLLER_QUORUM_VOTERS=0@kafka-0:9093,1@kafka-1:9093
+
+      # Cấu hình Mạng
+      - KAFKA_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka-0:9092
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+
+      # 👇 Quan trọng: Định nghĩa nơi lưu dữ liệu cho Apache Image
+      - KAFKA_LOG_DIRS=/var/lib/kafka/data
+
+      # Cấu hình Replica
+      - KAFKA_NUM_PARTITIONS=3
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=2
+      - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=2
+      - KAFKA_DEFAULT_REPLICATION_FACTOR=2
+      - KAFKA_MIN_IN_SYNC_REPLICAS=1
+    volumes:
+      - kafka_0_data:/var/lib/kafka/data
+    networks:
+      - kafka-network
+    deploy:
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints: [node.hostname == k8s-worker1]
+
+  kafka-1:
+    image: apache/kafka:latest
+    hostname: kafka-1
+    environment:
+      - KAFKA_NODE_ID=1
+      - KAFKA_PROCESS_ROLES=controller,broker
+      - KAFKA_CONTROLLER_QUORUM_VOTERS=0@kafka-0:9093,1@kafka-1:9093
+
+      - KAFKA_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka-1:9092
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+
+      - KAFKA_LOG_DIRS=/var/lib/kafka/data
+
+      - KAFKA_NUM_PARTITIONS=3
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=2
+      - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=2
+      - KAFKA_DEFAULT_REPLICATION_FACTOR=2
+      - KAFKA_MIN_IN_SYNC_REPLICAS=1
+    volumes:
+      - kafka_1_data:/var/lib/kafka/data
+    networks:
+      - kafka-network
+    deploy:
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints: [node.hostname == k8s-worker2]
+
+  connect:
+    image: debezium/connect:2.5
+    hostname: connect
+    ports:
+      - target: 8083
+        published: 8083
+        mode: host
+    environment:
+      - BOOTSTRAP_SERVERS=kafka-0:9092,kafka-1:9092
+      - GROUP_ID=1
+      - CONFIG_STORAGE_TOPIC=my_connect_configs
+      - OFFSET_STORAGE_TOPIC=my_connect_offsets
+      - STATUS_STORAGE_TOPIC=my_connect_statuses
+      - KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+      - VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+      - CONNECT_REST_ADVERTISED_HOST_NAME=connect
+      - CONNECT_REST_PORT=8083
+    networks:
+      - kafka-network
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == worker]
+      restart_policy:
+        condition: on-failure
+
+  # --- KAFKA UI ---
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    ports:
+      - '8080:8080'
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=my-cluster
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka-0:9092,kafka-1:9092
+    networks:
+      - kafka-network
+    deploy:
+      placement:
+        constraints: [node.hostname == k8s-master]
+
+volumes:
+  kafka_0_data:
+  kafka_1_data:
+
+networks:
+  kafka-network:
+    external: true
+    name: Docker-Network

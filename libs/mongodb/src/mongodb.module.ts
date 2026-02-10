@@ -14,7 +14,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       inject: [ConfigService],
       useFactory: async (configService: ConfigService) => ({
         uri: configService.get<string>('MONGO_URI'),
-        // Các tùy chọn khác nếu cần (Mongoose 6+ mặc định đã tối ưu)
         retryAttempts: 5,
         retryDelay: 1000,
       }),

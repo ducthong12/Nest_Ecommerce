@@ -3,109 +3,251 @@ name: CI/CD
 on:
   push:
     branches: ['production']
+  # 👇 1. THÊM NÚT BẤM CHẠY TAY (Cứu tinh khi Git không bắt được thay đổi)
+  workflow_dispatch:
 
 jobs:
+  # ------------------------------------------------------------------
+  # JOB 1: PHÂN TÍCH THAY ĐỔI (Dựa trên cấu trúc folder ảnh bạn gửi)
+  # ------------------------------------------------------------------
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      services_json: ${{ steps.set-matrix.outputs.services_json }}
+      services_list: ${{ steps.set-matrix.outputs.services_list }}
+      shared: ${{ steps.filter.outputs.shared }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # 👇 2. QUAN TRỌNG: Lấy toàn bộ lịch sử để so sánh diff
+          fetch-depth: 0
+
+      - name: Detect changed services
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          # 👇 3. BỎ 'base' và 'ref' -> Để nó tự động so sánh commit trước & sau
+          list-files: shell
+          filters: |
+            shared:
+              - 'common/**'           # Thư mục common dùng chung
+              - 'libs/**'             # Thư mục libs
+              - 'database/**'         # Thư mục database
+              - 'package.json'        # Dependencies thay đổi -> Build lại hết
+              - 'pnpm-lock.yaml'
+              - 'package-lock.json'
+              - 'Dockerfile'          # Sửa Dockerfile gốc -> Build lại hết
+              - 'docker-compose.yml'  # Config deploy đổi -> Deploy lại hết
+              - '.github/workflows/deploy.yml'
+
+            # 👇 MAP ĐÚNG THEO ẢNH: apps/<tên_service>
+            api-gateway:
+              - 'apps/api-gateway/**'
+            inventory:
+              - 'apps/inventory/**'
+            order:
+              - 'apps/order/**'
+            product:
+              - 'apps/product/**'
+            user:
+              - 'apps/user/**'
+            payment:
+              - 'apps/payment/**'
+            search:
+              - 'apps/search/**'
+
+      - name: Build service matrix
+        id: set-matrix
+        run: |
+          services=()
+
+          # --- LOGIC QUYẾT ĐỊNH ---
+
+          # TRƯỜNG HỢP A: Bấm nút chạy tay (workflow_dispatch) -> Deploy HẾT
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo ">>> 🚀 MANUAL TRIGGER: FORCING DEPLOY ALL SERVICES"
+            services=(api-gateway inventory order product user payment search)
+            
+          # TRƯỜNG HỢP B: Sửa file dùng chung (Shared) -> Deploy HẾT
+          elif [[ "${{ steps.filter.outputs.shared }}" == "true" ]]; then
+            echo ">>> 🔄 SHARED CODE CHANGED: DEPLOYING ALL SERVICES"
+            services=(api-gateway inventory order product user payment search)
+            
+          # TRƯỜNG HỢP C: Sửa service nào Deploy service đó
+          else
+            [[ "${{ steps.filter.outputs.api-gateway }}" == "true" ]] && services+=(api-gateway)
+            [[ "${{ steps.filter.outputs.inventory }}" == "true" ]] && services+=(inventory)
+            [[ "${{ steps.filter.outputs.order }}" == "true" ]] && services+=(order)
+            [[ "${{ steps.filter.outputs.product }}" == "true" ]] && services+=(product)
+            [[ "${{ steps.filter.outputs.user }}" == "true" ]] && services+=(user)
+            [[ "${{ steps.filter.outputs.payment }}" == "true" ]] && services+=(payment)
+            [[ "${{ steps.filter.outputs.search }}" == "true" ]] && services+=(search)
+          fi
+
+          # Debug
+          echo ">>> Services detected: ${services[@]}"
+
+          # Nếu không có gì thay đổi -> Dừng (Skip)
+          if [ ${#services[@]} -eq 0 ]; then
+            echo "services_json=[]" >> "$GITHUB_OUTPUT"
+            echo "services_list=" >> "$GITHUB_OUTPUT"
+            echo ">>> 💤 No changes detected. Skipping..."
+            exit 0
+          fi
+
+          # Tạo JSON cho Matrix
+          json=$(printf '%s\n' "${services[@]}" | python3 - <<'PY'
+          import json,sys
+          services=[line.strip() for line in sys.stdin if line.strip()]
+          print(json.dumps(services))
+          PY
+          )
+
+          echo "services_json=$json" >> "$GITHUB_OUTPUT"
+          echo "services_list=${services[*]}" >> "$GITHUB_OUTPUT"
+
+  # ------------------------------------------------------------------
+  # JOB 2: SETUP INFRA (Luôn chạy cho chắc)
+  # ------------------------------------------------------------------
   deploy-infra:
     runs-on: self-hosted
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-
-      - name: Create .env file
-        run: |
-          cat <<EOF > .env
-          REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
-          EOF
-
-      - name: Deploy to Swarm
+      - name: Deploy to Infrastructure
+        env:
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
         run: |
           chmod +x scripts/init-swarm.sh
-          ./scripts/init-swarm.sh  # <--- Gọi file script chạy
+          ./scripts/init-swarm.sh
 
-  # # JOB 1: BUILD & PUSH (Chạy trên Cloud Ubuntu của GitHub)
-  # build-and-push:
-  #   runs-on: ubuntu-latest
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       # Danh sách 3 app cần build (tên này phải trùng với tên folder trong source code)
-  #       service: [api-gateway, inventory, order, product, user]
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
+  # ------------------------------------------------------------------
+  # JOB 3: BUILD & PUSH DOCKER (Chạy song song)
+  # ------------------------------------------------------------------
+  build-and-push:
+    needs: changes
+    runs-on: ubuntu-latest
+    # if: needs.changes.outputs.services_json != '[]' && needs.changes.outputs.services_json != ''
+    if: always()
+    strategy:
+      fail-fast: false
+      matrix:
+        # service: ${{ fromJson(needs.changes.outputs.services_json) }}
+        service: ${{ fromJson(needs.changes.outputs.services_json != '[]' && needs.changes.outputs.services_json || '["api-gateway", "product", "user", "order", "inventory", "payment", "search"]') }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-  #     - name: Login Docker Hub
-  #       uses: docker/login-action@v3
-  #       with:
-  #         username: ${{ secrets.DOCKERHUB_USERNAME }}
-  #         password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Login Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-  #     - name: Set up Docker Buildx
-  #       uses: docker/setup-buildx-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-  #     # Build và Push từng service theo danh sách matrix ở trên
-  #     - name: Build and push ${{ matrix.service }}
-  #       uses: docker/build-push-action@v5
-  #       with:
-  #         context: . # Quan trọng: Context là root để thấy file chung
-  #         file: ./Dockerfile # Dùng Dockerfile chung
-  #         push: true
-  #         # Đặt tên ảnh theo format: username/tên-service:latest
-  #         tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest
-  #         # Truyền biến APP_NAME vào để Dockerfile biết đang build app nào
-  #         build-args: |
-  #           APP_NAME=${{ matrix.service }}
-  #         cache-from: type=gha
-  #         cache-to: type=gha,mode=max
+      - name: Build and push ${{ matrix.service }}
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest
+          build-args: |
+            APP_NAME=${{ matrix.service }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-  # # JOB 2: DEPLOY (Chạy trên máy EC2 của bạn - Self-hosted)
-  # deploy:
-  #   needs: build-and-push
-  #   runs-on: self-hosted # <--- Chạy trực tiếp trên EC2
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
-  #       # Bước này sẽ tải file docker-compose.yml mới nhất về máy EC2
+  # ------------------------------------------------------------------
+  # JOB 4: DEPLOY TO SWARM (Chạy trên máy thật)
+  # ------------------------------------------------------------------
+  deploy:
+    needs: [changes, build-and-push]
+    runs-on: self-hosted
+    # Chạy khi có list service HOẶC khi bấm nút Manual
+    if: always() && (needs.changes.outputs.services_list != '' || github.event_name == 'workflow_dispatch')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-  #     - name: Deploy 3 Apps
-  #       run: |
-  #         cat <<EOF > .env
-  #         DOCKER_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
-  #         DATABASE_URL_USER="${{ secrets.DATABASE_URL_USER }}"
-  #         DATABASE_URL_INVENTORY="${{ secrets.DATABASE_URL_INVENTORY }}"
-  #         DATABASE_URL_ORDER="${{ secrets.DATABASE_URL_ORDER }}"
-  #         REDIS_HOST="${{ secrets.REDIS_HOST }}"
-  #         MONGO_URI="${{ secrets.MONGO_URI }}"
+      - name: Deploy Microservices
+        shell: bash
+        run: |
+          # --- 1. ĐĂNG NHẬP DOCKER (QUAN TRỌNG ĐỂ KHÔNG BỊ RATE LIMIT) ---
+          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-  #         # AWS Configuration
-  #         AWS_BUCKET_ACCESS_KEY="${{ secrets.AWS_BUCKET_ACCESS_KEY }}"
-  #         AWS_BUCKET_NAME="${{ secrets.AWS_BUCKET_NAME }}"
-  #         AWS_BUCKET_SECRET_KEY="${{ secrets.AWS_BUCKET_SECRET_KEY }}"
-  #         AWS_REGION_ID="${{ secrets.AWS_REGION_ID }}"
+          # --- 2. Xử lý Config ---
+          RAW_KEY="${{ secrets.AWS_CLOUDFRONT_PRIVATE_KEY }}"
+          CLEAN_KEY="${RAW_KEY//$'\n'/\\n}"
 
-  #         # Cloudfront (Cẩn thận với Private Key nhiều dòng)
-  #         AWS_CLOUDFRONT_KEY_PAIR_ID="${{ secrets.AWS_CLOUDFRONT_KEY_PAIR_ID }}"
-  #         AWS_CLOUDFRONT_PRIVATE_KEY="${{ secrets.AWS_CLOUDFRONT_PRIVATE_KEY }}"
-  #         AWS_CLOUDFRONT_S3_DOMAIN="${{ secrets.AWS_CLOUDFRONT_S3_DOMAIN }}"
+          cat <<EOF > .env
+          DOCKER_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
+          DATABASE_URL_USER=postgresql://postgres:12345678@infra_pg-master:5432/ecommerce_db_user?schema=public
+          DATABASE_URL_INVENTORY=postgresql://postgres:12345678@infra_pg-master:5432/ecommerce_db_inventory?schema=public
+          DATABASE_URL_ORDER=postgresql://postgres:12345678@infra_pg-master:5432/ecommerce_db_order?schema=public
+          DATABASE_URL_PAYMENT=postgresql://postgres:12345678@infra_pg-master:5432/ecommerce_db_payment?schema=public
+          MONGO_URI=mongodb://infra_mongo-node-0:27017,infra_mongo-node-1:27017,infra_mongo-node-2:27017/ecommerce_db?replicaSet=rs0
+          REDIS_SENTINELS=infra_redis-sentinel-0:26379,infra_redis-sentinel-1:26379,infra_redis-sentinel-2:26379
+          REDIS_MASTER_NAME=mymaster
+          REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+          KAFKA_BROKERS=infra_kafka-0:9092,infra_kafka-1:9092
+          AWS_BUCKET_ACCESS_KEY=${{ secrets.AWS_BUCKET_ACCESS_KEY }}
+          AWS_BUCKET_NAME=${{ secrets.AWS_BUCKET_NAME }}
+          AWS_BUCKET_SECRET_KEY=${{ secrets.AWS_BUCKET_SECRET_KEY }}
+          AWS_REGION_ID=${{ secrets.AWS_REGION_ID }}
+          AWS_CLOUDFRONT_KEY_PAIR_ID=${{ secrets.AWS_CLOUDFRONT_KEY_PAIR_ID }}
+          AWS_CLOUDFRONT_PRIVATE_KEY=$CLEAN_KEY
+          AWS_CLOUDFRONT_S3_DOMAIN=${{ secrets.AWS_CLOUDFRONT_S3_DOMAIN }}
+          API_GATEWAY_PORT=3000
+          USER_SERVICE_PORT=3007
+          PRODUCT_SERVICE_PORT=3002
+          ORDER_SERVICE_PORT=3003
+          INVENTORY_SERVICE_PORT=3004
+          API_USER_GRPC_URL=microservices_user:50051
+          API_PRODUCT_GRPC_URL=microservices_product:50052
+          API_ORDER_GRPC_URL=microservices_order:50053
+          API_INVENTORY_GRPC_URL=microservices_inventory:50054
+          API_PAYMENT_GRPC_URL=microservices_payment:50055
+          API_SEARCH_GRPC_URL=microservices_search:50056
+          USER_GRPC_URL="0.0.0.0:50051"
+          PRODUCT_GRPC_URL="0.0.0.0:50052"
+          ORDER_GRPC_URL="0.0.0.0:50053"
+          INVENTORY_GRPC_URL="0.0.0.0:50054"
+          PAYMENT_GRPC_URL="0.0.0.0:50055"
+          SEARCH_GRPC_URL="0.0.0.0:50056"
+          EOF
 
-  #         # Ports
-  #         API_GATEWAY_PORT=${{ secrets.API_GATEWAY_PORT }}
-  #         STORAGE_SERVICE_PORT=${{ secrets.STORAGE_SERVICE_PORT }}
-  #         ANALYTICS_SERVICE_PORT=${{ secrets.ANALYTICS_SERVICE_PORT }}
-  #         USER_PORT_GRPC=${{ secrets.USER_PORT_GRPC }}
-  #         PRODUCT_PORT_GRPC=${{ secrets.PRODUCT_PORT_GRPC }}
-  #         ORDER_PORT_GRPC=${{ secrets.ORDER_PORT_GRPC }}
-  #         INVENTORY_PORT_GRPC=${{ secrets.INVENTORY_PORT_GRPC }}
-  #         EOF
+          sed -i 's/^[ \t]*//' .env
+          export DOCKER_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
 
-  #         # 2. Pull images (Tải cả 3 ảnh api-gateway, analytics, storage về)
-  #         # Vì trong docker-compose.yml bạn đã khai báo 3 service này
-  #         docker compose pull
+          # --- 3. LOGIC DEPLOY THÔNG MINH ---
+          SERVICES="${{ needs.changes.outputs.services_list }}"
+          SHARED="${{ needs.changes.outputs.shared }}"
+          IS_MANUAL="${{ github.event_name == 'workflow_dispatch' }}"
 
-  #         # 3. Khởi động lại hệ thống
-  #         # -d: chạy ngầm
-  #         # --remove-orphans: xóa các container rác không còn trong file config
-  #         docker compose up -d --remove-orphans
+          echo ">>> DEPLOY CONTEXT - Manual: $IS_MANUAL | Shared: $SHARED | List: $SERVICES"
 
-  #         # 4. Dọn dẹp image cũ để giải phóng ổ cứng
-  #         docker system prune -f
+          if [[ "$SHARED" == "true" ]] || [[ "$IS_MANUAL" == "true" ]]; then
+            echo ">>> 🚀 FULL STACK DEPLOYMENT INITIATED..."
+            # Pull all images
+            for svc in api-gateway inventory order product user payment search; do
+               docker pull ${{ secrets.DOCKERHUB_USERNAME }}/$svc:latest
+            done
+            docker stack deploy -c docker-compose.yml microservices --with-registry-auth
+          else
+            echo ">>> 🎯 PARTIAL DEPLOYMENT INITIATED..."
+            for service in $SERVICES; do
+              echo ">>> Updating service: microservices_$service"
+              docker pull ${{ secrets.DOCKERHUB_USERNAME }}/$service:latest
+              # Force update để đảm bảo container được restart
+              docker service update \
+                --image ${{ secrets.DOCKERHUB_USERNAME }}/$service:latest \
+                --with-registry-auth \
+                --force \
+                microservices_$service
+            done
+          fi
+
+          docker system prune -f

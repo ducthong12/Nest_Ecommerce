@@ -29,7 +29,7 @@ import {
         options: {
           client: {
             clientId: 'order-service',
-            brokers: [process.env.KAFKA_BROKER || 'localhost:9092'],
+            brokers: (process.env.KAFKA_BROKERS || 'kafka:29092').split(','),
           },
           producer: {
             allowAutoTopicCreation: true,

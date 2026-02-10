@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  elasticsearch:
+    image: elasticsearch:7.17.10
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    volumes:
+      - elastic_data:/usr/share/elasticsearch/data
+    networks:
+      - elastic-network
+    deploy:
+      placement:
+        constraints: [node.hostname == k8s-worker1]
+      resources:
+        limits:
+          memory: 1G
+volumes:
+  elastic_data:
+
+networks:
+  elastic-network:
+    external: true
+    name: Docker-Network
