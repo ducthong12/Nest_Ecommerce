@@ -1,0 +1,64 @@
+version: '3.8'
+
+networks:
+  app-network:
+    # external: true
+    name: Docker-Network
+
+services:
+  redis:
+    container_name: redis-container
+    build:
+      context: .
+      dockerfile: Dockerfile.redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+
+  traefik:
+    image: traefik:v2.10
+    container_name: traefik_gateway
+    ports:
+      - '3000:3000' # Cổng REST API
+      - '50051:50051' # Cổng gRPC
+      - '8080:8080' # Dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+    networks:
+      - app-network
+
+  order-service:
+    build:
+      context: .
+      dockerfile: ./apps/order/Dockerfile
+    ports:
+      - '3333:3333'
+    restart: always
+    labels:
+      - 'traefik.enable=true'
+
+      # --- HTTP (REST) ---
+      - 'traefik.http.routers.order-rest.entrypoints=web'
+      - 'traefik.http.routers.order-rest.rule=PathPrefix(`/api/v1/order`)'
+      # - 'traefik.http.routers.order-rest.middlewares=api-strip@file'
+      - 'traefik.http.services.order-rest-svc.loadbalancer.server.port=3333'
+      - 'traefik.http.routers.order-rest.service=order-rest-svc'
+
+      # --- gRPC ---
+      - 'traefik.http.routers.order-grpc.entrypoints=grpc'
+      - 'traefik.http.routers.order-grpc.rule=Host(`localhost`) || Host(`127.0.0.1`)'
+      - 'traefik.http.services.order-grpc-svc.loadbalancer.server.port=50051'
+      - 'traefik.http.services.order-grpc-svc.loadbalancer.server.scheme=h2c'
+      - 'traefik.http.routers.order-grpc.service=order-grpc-svc'
+    networks:
+      - app-network
+
+volumes:
+  redis_data:
+  # pg_master_data:
+  # mongo_data:

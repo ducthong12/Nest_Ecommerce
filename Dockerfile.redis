@@ -1,0 +1,9 @@
+FROM redis:alpine
+
+USER root
+
+RUN mkdir -p /data && chown -R redis:redis /data && chmod 777 /data
+
+USER redis
+
+CMD ["redis-server", "--requirepass", "12345678", "--appendonly", "yes"]

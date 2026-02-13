@@ -1,0 +1,70 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "debian-openssl-3.0.x"]
+  output        = "../../../node_modules/@generated/order"
+}
+
+generator docs {
+  provider = "node node_modules/prisma-docs-generator"
+  output        = "../../../node_modules/@generated/docs-order" 
+}
+
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL_ORDER")
+}
+
+model Order {
+  id        BigInt      @id @default(autoincrement())
+  userId    Int         @map("user_id") // ID từ Identity Service
+  status    OrderStatus @default(PENDING)
+  total     Decimal     @db.Decimal(12, 2)
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+  items     OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        Int     @id @default(autoincrement())
+  orderId   BigInt  @map("order_id")
+  
+  productId String  @map("product_id") 
+  productName String? 
+  productSku  String? 
+  
+  quantity  Int
+  price     Decimal @db.Decimal(12, 2)
+  order     Order   @relation(fields: [orderId], references: [id])
+
+  @@map("order_items")
+}
+
+model Outbox {
+  id          String   @id @default(uuid())
+  topic       String   // Tên topic Kafka (vd: 'payment.init')
+  payload     Json     // Nội dung message
+  status      String   @default("PENDING") // PENDING, COMPLETED, FAILED
+  retryCount  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+  @@map("outbox")
+}
+
+enum OrderStatus {
+  DRAFT
+  PENDING
+  CONFIRMED
+  SHIPPED
+  COMPLETED
+  CANCELED
+}

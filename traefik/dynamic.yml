@@ -1,0 +1,21 @@
+# traefik/dynamic.yml
+
+http:
+  middlewares:
+    # Hỗ trợ gRPC (h2c là HTTP/2 không mã hóa)
+    grpc-headers:
+      headers:
+        customRequestHeaders:
+          Content-Type: 'application/grpc'
+
+# Cấu hình TLS (SSL) mặc định
+# Nếu bạn chạy localhost, phần này giúp tránh lỗi trình duyệt,
+# nhưng với gRPC "h2c" (cleartext) thì chưa cần thiết lắm.
+tls:
+  options:
+    default:
+      minVersion: VersionTLS12
+      cipherSuites:
+        - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+        - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+        - TLS_CHACHA20_POLY1305_SHA256

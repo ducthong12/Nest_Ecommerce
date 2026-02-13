@@ -1,0 +1,22 @@
+# traefik/traefik.yml
+log:
+  level: DEBUG
+
+api:
+  insecure: true
+  dashboard: true
+
+entryPoints:
+  web:
+    address: ':3000'
+  grpc:
+    address: ':50051'
+
+providers:
+  docker:
+    endpoint: 'unix:///var/run/docker.sock'
+    exposedByDefault: false
+    watch: true
+  file:
+    filename: '/etc/traefik/dynamic.yml'
+    watch: true

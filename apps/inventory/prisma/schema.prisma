@@ -1,0 +1,67 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "debian-openssl-3.0.x"]
+  output        = "../../../node_modules/@generated/inventory"
+}
+
+generator docs {
+  provider = "node node_modules/prisma-docs-generator"
+  output        = "../../../node_modules/@generated/docs-inventory"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL_INVENTORY")
+}
+
+model Inventory {
+  id             Int      @id @default(autoincrement())
+  productId      String   @map("product_id") 
+  sku            String   @unique 
+  
+  stockQuantity  Int      @default(0) @map("stock_quantity") 
+  reservedStock  Int      @default(0) @map("reserved_stock") 
+  
+  lastUpdated    DateTime @updatedAt @map("last_updated")
+
+  @@map("inventories")
+}
+
+model InventoryTransaction {
+  id          BigInt   @id @default(autoincrement())
+  inventoryId Int      @map("inventory_id")
+  type        TransType
+  quantity    Int
+  reason      String? 
+  createdAt   DateTime @default(now()) @map("created_at")
+  transactionScript String @unique
+
+  @@map("inventory_transactions")
+}
+
+model Outbox {
+  id          String   @id @default(uuid())
+  topic       String   
+  payload     Json     
+  status      String   @default("PENDING") 
+  retryCount  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+  @@map("outbox")
+}
+
+
+enum TransType {
+  INBOUND  // Nhập kho
+  OUTBOUND // Xuất kho/Bán
+  RESERVE  // Giữ hàng
+  RELEASE  // Hủy giữ hàng (trả lại kho)
+}
