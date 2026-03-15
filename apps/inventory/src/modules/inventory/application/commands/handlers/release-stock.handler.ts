@@ -1,36 +1,34 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
-import { ReserveStockCommand } from '../impl/reserve-stock.command';
 import { PrismaInventoryService } from '../../../infrastructure/persistence/prisma-inventory.service';
 import { PrismaInventoryRepository } from '../../../infrastructure/persistence/prisma-inventory.repository';
+import { ReleaseStockCommand } from '../impl/release-stock.command';
 import { PrismaOutboxInventoryRepository } from '../../../infrastructure/persistence/prisma-outbox.repository';
 
-@CommandHandler(ReserveStockCommand)
-export class ReserveStockHandler implements ICommandHandler<ReserveStockCommand> {
+@CommandHandler(ReleaseStockCommand)
+export class ReleaseStockHandler implements ICommandHandler<ReleaseStockCommand> {
   constructor(
     private readonly prismaInventory: PrismaInventoryService,
     private readonly inventoryRepository: PrismaInventoryRepository,
     private readonly outboxRepository: PrismaOutboxInventoryRepository,
   ) {}
 
-  async execute(command: ReserveStockCommand): Promise<void> {
-    const { items } = command;
+  async execute(command: ReleaseStockCommand): Promise<void> {
+    const { item } = command;
 
     try {
-      const result = await this.prismaInventory.$transaction(async (tx) => {
-        await this.inventoryRepository.decreaseStock(items, tx);
+      await this.prismaInventory.$transaction(async (tx) => {
+        await this.inventoryRepository.addStock(item, tx);
         await this.outboxRepository.createMany(
           [
             {
-              topic: 'order.replies',
-              payload: { items },
+              topic: 'inventory.stock.released',
+              payload: { item },
               status: 'PENDING',
             },
           ],
           tx,
         );
       });
-
-      return result;
     } catch (error) {
       throw error;
     }

@@ -20,6 +20,7 @@ export class ReserveStockHandler implements ICommandHandler<ReserveStockCommand>
           orderId: command.orderId,
           items: command.items,
         },
+        status: 'PENDING',
       },
     ]);
     console.log(
@@ -43,6 +44,7 @@ export class ProcessPaymentHandler implements ICommandHandler<ProcessPaymentComm
           amount: command.amount,
           userId: command.userId,
         },
+        status: 'PENDING',
       },
     ]);
   }
@@ -64,6 +66,7 @@ export class CancelOrderHandler implements ICommandHandler<CancelOrderCommand> {
           orderId: command.orderId,
           reason: command.reason,
         },
+        status: 'PENDING',
       },
     ]);
   }

@@ -2,7 +2,7 @@
 export class ReserveStockCommand {
   constructor(
     public readonly orderId: number,
-    public readonly items: any[], // Hoặc định nghĩa kiểu ItemDto cụ thể
+    public readonly items: any[],
   ) {}
 }
 

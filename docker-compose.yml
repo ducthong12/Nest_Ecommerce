@@ -1,5 +1,3 @@
-version: '3.8'
-
 networks:
   app-network:
     # external: true
@@ -58,7 +56,94 @@ services:
     networks:
       - app-network
 
+  inventory-service:
+    build:
+      context: .
+      dockerfile: ./apps/inventory/Dockerfile
+    ports:
+      - '3334:3334'
+    restart: always
+    labels:
+      - 'traefik.enable=true'
+
+      # --- HTTP (REST) ---
+      - 'traefik.http.routers.inventory-rest.entrypoints=web'
+      - 'traefik.http.routers.inventory-rest.rule=PathPrefix(`/api/v1/inventory`)'
+      - 'traefik.http.services.inventory-rest-svc.loadbalancer.server.port=3334'
+      - 'traefik.http.routers.inventory-rest.service=inventory-rest-svc'
+
+      # --- gRPC ---
+      - 'traefik.http.routers.inventory-grpc.entrypoints=grpc'
+      - 'traefik.http.routers.inventory-grpc.rule=Host(`localhost`) || Host(`127.0.0.1`)'
+      - 'traefik.http.services.inventory-grpc-svc.loadbalancer.server.port=50052'
+      - 'traefik.http.services.inventory-grpc-svc.loadbalancer.server.scheme=h2c'
+      - 'traefik.http.routers.inventory-grpc.service=inventory-grpc-svc'
+    networks:
+      - app-network
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.2
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - '9200:9200'
+    volumes:
+      - elastic_data:/usr/share/elasticsearch/data
+    networks:
+      - app-network
+
+  kafka:
+    image: apache/kafka:latest
+    container_name: kafka
+    ports:
+      - '9092:9092'
+      - '9094:9094'
+    environment:
+      - KAFKA_NODE_ID=1
+      - KAFKA_PROCESS_ROLES=controller,broker
+      - KAFKA_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
+      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - CLUSTER_ID=MkU3OEVBNTcwNTJENDM2Qk
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - app-network
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - '8081:8080'
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=local_kafka
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9092
+      - DYNAMIC_CONFIG_ENABLED=true
+    networks:
+      - app-network
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql_db
+    environment:
+      - MYSQL_ROOT_PASSWORD=12345678
+      - MYSQL_DATABASE=ecommerce_db
+      - MYSQL_USER=admin
+      - MYSQL_PASSWORD=12345678
+    ports:
+      - '3307:3306'
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - app-network
+
 volumes:
   redis_data:
-  # pg_master_data:
-  # mongo_data:
+  elastic_data:
+  kafka_data:
+  mysql_data:
